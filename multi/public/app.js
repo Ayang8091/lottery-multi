@@ -523,7 +523,7 @@
         if (row.kind === 'dantuo') {
           return `<span class="grp">胆</span>${row.dan.map((v) => ballHtml(g, v, 0, color)).join('')}<span class="sep-x">/</span><span class="grp">拖</span>${row.tuo.map((v) => ballHtml(g, v, 0, color)).join('')}`;
         }
-        return `<span class="grp">${g.groups[gi] ? g.groups[gi].name : ''}</span>${row.nums.map((v) => ballHtml(g, v, 0, color)).join('')}`;
+        return `<span class="grp">${g.key === 'kl8' ? '选号' : (g.groups[gi] ? g.groups[gi].name : '')}</span>${row.nums.map((v) => ballHtml(g, v, 0, color)).join('')}`;
       }).join('<span class="sep-x">+</span>') + '</div>';
     }
     if (t.dan && t.tuo) {
@@ -826,10 +826,11 @@
       } else {
         t.selections.forEach((row, gi) => {
           const grp = g.groups[gi] || { name: '号码', cls: 'gold' };
+          const name = g.key === 'kl8' ? '' : grp.name;
           if (row.kind === 'dantuo') {
-            add(grp.name + '胆码', row.dan, grp.cls);
-            add(grp.name + '拖码', row.tuo, grp.cls + 'Dim');
-          } else add(grp.name, row.nums, grp.cls);
+            add(name + '胆码', row.dan, grp.cls);
+            add(name + '拖码', row.tuo, grp.cls + 'Dim');
+          } else add(name || '选号', row.nums, grp.cls);
         });
       }
       return rows;
