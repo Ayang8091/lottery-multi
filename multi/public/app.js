@@ -396,6 +396,18 @@
       controls.push(main, sub, dan);
     } else if (g.key === 'qxc' && mode !== 'direct') {
       controls.push(paramControl('digitsPerPos', '每个复式位选号', [[2, '2个'], [3, '3个']]));
+    } else if (g.key === 'pl3' || g.key === 'pl5' || g.key === 'f3d') {
+      if (mode === 'direct_compound') controls.push(paramControl('digitsPerPos', '每位置选号个数', [[2, '2个'], [3, '3个']]));
+      if (mode === 'direct_combo_compound') controls.push(paramControl('poolSize', '组合选号个数', numberOptions(3, 6, '码')));
+      if (mode === 'group3_compound') controls.push(paramControl('poolSize', '组选3选号个数', numberOptions(2, 6, '码')));
+      if (mode === 'group6_compound') controls.push(paramControl('poolSize', '组选6选号个数', numberOptions(4, 8, '码')));
+      if (mode === 'group3_dantuo') controls.push(paramControl('tuoCount', '拖码个数', numberOptions(2, 6, '拖')));
+      if (mode === 'group6_dantuo' || mode === 'direct_combo_dantuo') {
+        controls.push(paramControl('danCount', '胆码个数', numberOptions(1, 2, '胆')));
+        controls.push(paramControl('totalSize', '胆码+拖码总数', numberOptions(4, 8, '码')));
+      }
+      if (mode.endsWith('_span')) controls.push(paramControl('spanCount', '选择跨度个数', numberOptions(1, 3, '个')));
+      if (mode.endsWith('_sum')) controls.push(paramControl('sumCount', '选择和值个数', numberOptions(1, 4, '个')));
     } else if (g.key === 'kl8') {
       if (mode === 'compound' || (mode === 'dantuo' && S.pick.w > 1)) controls.push(paramControl('extra', '超出单式的加选码', numberOptions(1, 3, '码')));
       if (mode === 'dantuo' && S.pick.w > 1) controls.push(paramControl('danCount', '胆码个数', numberOptions(1, S.pick.w - 1, '胆')));
@@ -471,8 +483,8 @@
   function ticketSelectionHtml(g, t) {
     if (t.option) return `<div class="nums"><span class="grp">${t.kind === 'bigsmall' ? '大小' : '奇偶'}</span><span class="ball sm gold">${esc(t.label || t.option)}</span></div>`;
     if (t.selections) {
-      if (g.key === 'qxc') {
-        return '<div class="nums">' + t.selections.map((row, p) => `<span class="grp">${g.positions[p]}</span>${row.map((v) => ballHtml(g, v, p)).join('')}`).join('<span class="sep-x">|</span>') + '</div>';
+      if (g.kind === 'digit') {
+        return '<div class="nums">' + t.selections.map((row, p) => `<span class="grp">${g.positions[p] || '第' + (p + 1) + '位'}</span>${row.map((v) => ballHtml(g, v, p)).join('')}`).join('<span class="sep-x">|</span>') + '</div>';
       }
       return '<div class="nums">' + t.selections.map((row, gi) => {
         const color = g.groups[gi] ? g.groups[gi].cls : 'gold';
@@ -482,8 +494,8 @@
         return `<span class="grp">${g.groups[gi] ? g.groups[gi].name : ''}</span>${row.nums.map((v) => ballHtml(g, v, 0, color)).join('')}`;
       }).join('<span class="sep-x">+</span>') + '</div>';
     }
-    if (t.kind === 'dantuo') {
-      return `<div class="nums"><span class="grp">胆</span>${t.dan.map((v) => `<span class="ball sm gold">${pad2(v)}</span>`).join('')}<span class="sep-x">/</span><span class="grp">拖</span>${t.tuo.map((v) => `<span class="ball sm gold dim">${pad2(v)}</span>`).join('')}</div>`;
+    if (t.dan && t.tuo) {
+      return `<div class="nums"><span class="grp">胆</span>${t.dan.map((v) => `<span class="ball sm gold">${g.kind === 'digit' ? v : pad2(v)}</span>`).join('')}<span class="sep-x">/</span><span class="grp">拖</span>${t.tuo.map((v) => `<span class="ball sm gold dim">${g.kind === 'digit' ? v : pad2(v)}</span>`).join('')}</div>`;
     }
     if (t.kind === '1d') return `<div class="nums"><span class="grp">${g.positions[t.pos] || ''}</span>${ballHtml(g, t.nums[0], t.pos || 0)}</div>`;
     if (t.kind === 'guess1d') return `<div class="nums"><span class="grp">任意位置</span>${ballHtml(g, t.nums[0], 0)}</div>`;
@@ -491,18 +503,22 @@
     if (t.kind === 'guess2d_same') return `<div class="nums"><span class="grp">两同号</span>${ballHtml(g, t.nums[0], 0)}</div>`;
     if (t.kind === 'guess2d_diff') return `<div class="nums"><span class="grp">两不同号</span>${t.nums.map((v) => ballHtml(g, v, 0)).join('')}</div>`;
     if (t.kind === 'triple') return `<div class="nums"><span class="grp">三位同号</span>${ballHtml(g, t.nums[0], 0)}</div>`;
+    if (t.sums) return `<div class="nums"><span class="grp">和值</span>${t.sums.map((v) => `<span class="ball sm purple">${v}</span>`).join('')}</div>`;
+    if (t.spans) return `<div class="nums"><span class="grp">跨度</span>${t.spans.map((v) => `<span class="ball sm purple">${v}</span>`).join('')}</div>`;
     if (t.kind === 'sum') return `<div class="nums"><span class="grp">和值</span><span class="ball sm purple">${t.nums[0]}</span></div>`;
     return `<div class="nums">${groupedNumsHtml(g, t.nums)}</div>`;
   }
   function ticketToText(g, t) {
     if (t.selections) {
-      if (g.key === 'qxc') return t.selections.map((row) => row.join(' ')).join(' | ');
+      if (g.kind === 'digit') return t.selections.map((row) => row.join(' ')).join(' | ');
       return t.selections.map((row) => row.kind === 'dantuo' ? `胆:${row.dan.join(' ')} 拖:${row.tuo.join(' ')}` : row.nums.join(' ')).join(' + ');
     }
-    if (t.kind === 'dantuo') return `胆:${t.dan.join(' ')} 拖:${t.tuo.join(' ')}`;
+    if (t.dan && t.tuo) return `胆:${t.dan.join(' ')} 拖:${t.tuo.join(' ')}`;
     if (t.option) return t.label || t.option;
     if (t.kind === '1d') return `${g.positions[t.pos] || ''} ${t.nums[0]}`;
     if (t.kind === '2d') return `${t.posName || '指定两位'} ${t.nums.join(' ')}`;
+    if (t.sums) return `和值 ${t.sums.join(' ')}`;
+    if (t.spans) return `跨度 ${t.spans.join(' ')}`;
     if (t.kind === 'sum') return `和值 ${t.nums[0]}`;
     if (t.kind === 'triple') return `猜三同 ${t.nums[0]}`;
     return fmtNums(g, t.nums);

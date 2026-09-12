@@ -128,7 +128,9 @@ test('官方投注方式均可生成合法方案', () => {
     ['ssq', 'full_compound', { mainSize: 7, subSize: 2 }], ['ssq', 'red_dantuo', { mainSize: 7, mainDan: 1 }],
     ['ssq', 'full_dantuo', { mainSize: 7, mainDan: 1, subSize: 2 }],
     ['kl8', 'single', { w: 5 }], ['kl8', 'compound', { w: 5, extra: 2 }], ['kl8', 'dantuo', { w: 5, extra: 2, danCount: 2 }],
-    ...ML.PLAY_OPTIONS.f3d.map((x) => ['f3d', x.key, {}]),
+    ...ML.PLAY_OPTIONS.pl3.map((x) => ['pl3', x.key, { digitsPerPos: 2, poolSize: 4, tuoCount: 3, danCount: 1, totalSize: 5, spanCount: 1, sumCount: 1 }]),
+    ...ML.PLAY_OPTIONS.pl5.map((x) => ['pl5', x.key, { digitsPerPos: 2 }]),
+    ...ML.PLAY_OPTIONS.f3d.map((x) => ['f3d', x.key, { digitsPerPos: 2, poolSize: 4, tuoCount: 3, danCount: 1, totalSize: 5 }]),
   ];
   for (const [key, mode, extra] of cases) {
     const g = ML.GAMES[key];
@@ -140,6 +142,21 @@ test('官方投注方式均可生成合法方案', () => {
       if (key === 'kl8' && mode !== 'single') assert.ok(t.nums.length > (extra.w || 10), `${mode} 应生成复式/胆拖选号`);
     }
   }
+});
+
+test('排列3 / 福彩3D复式与胆拖注数符合官方组合规则', () => {
+  const data = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'all.json'), 'utf8'));
+  const run = (key, mode, opts) => E.generate({ g: ML.GAMES[key], draws: data[key].slice(-120), strategy: 'rand', count: 1, mode, ...opts }).tickets[0];
+  assert.equal(run('pl3', 'direct_compound', { digitsPerPos: 2 }).combos, 8);
+  assert.equal(run('pl3', 'direct_combo_compound', { poolSize: 4 }).combos, 24);
+  assert.equal(run('pl3', 'group3_compound', { poolSize: 4 }).combos, 12);
+  assert.equal(run('pl3', 'group6_compound', { poolSize: 4 }).combos, 4);
+  assert.equal(run('pl3', 'group3_dantuo', { tuoCount: 3 }).combos, 6);
+  assert.equal(run('pl3', 'group6_dantuo', { danCount: 1, totalSize: 5 }).combos, 6);
+  assert.equal(run('pl3', 'direct_combo_dantuo', { danCount: 1, totalSize: 5 }).combos, 36);
+  assert.equal(run('f3d', 'direct_compound', { digitsPerPos: 2 }).combos, 8);
+  assert.equal(run('f3d', 'group6_compound', { poolSize: 4 }).combos, 4);
+  assert.equal(run('pl5', 'direct_compound', { digitsPerPos: 2 }).combos, 32);
 });
 
 test('统一引擎：7 游戏可出号 + 回测均值接近理论', () => {

@@ -205,6 +205,113 @@
   function sampleSorted(row, k, rnd) {
     return E.sampleDistinct(row, k, rnd).sort((a, b) => a - b);
   }
+  const DIGIT_EXTENDED = new Set([
+    'direct_compound', 'direct_combo_compound', 'group3_compound', 'group6_compound',
+    'group3_dantuo', 'group6_dantuo', 'direct_combo_dantuo',
+    'direct_span', 'group3_span', 'group6_span', 'direct_sum', 'group_sum',
+  ]);
+  const SPAN_COUNTS = { direct: new Array(10).fill(0), group3: new Array(10).fill(0), group6: new Array(10).fill(0) };
+  const SUM_COUNTS = { direct: new Array(28).fill(0), group: new Array(28).fill(0) };
+  (() => {
+    for (let a = 0; a < 10; a++) for (let b = 0; b < 10; b++) for (let c = 0; c < 10; c++) {
+      const sum = a + b + c, span = Math.max(a, b, c) - Math.min(a, b, c), type = new Set([a, b, c]).size;
+      SPAN_COUNTS.direct[span]++;
+      SUM_COUNTS.direct[sum]++;
+      if (type === 2) SPAN_COUNTS.group3[span]++;
+      if (type === 3) SPAN_COUNTS.group6[span]++;
+    }
+    for (let a = 0; a < 10; a++) for (let b = a; b < 10; b++) for (let c = b; c < 10; c++) {
+      if (a === b && b === c) continue;
+      SUM_COUNTS.group[a + b + c]++;
+    }
+  })();
+  function digitAggregate(feats, strategy) {
+    const out = [];
+    for (let d = 0; d < 10; d++) {
+      let count = 0, rec = 0, trend = 0, cold = 0;
+      for (const row of feats) {
+        const f = row.find((x) => x.d === d);
+        if (f) { count += f.count; rec += f.miss; trend += f.fTrend; cold += f.fCold; }
+      }
+      const s = strategy === 'cold' ? cold * 20 + rec : count + rec / 12 + trend * 2;
+      out.push({ v: d, s: Math.max(.001, s) });
+    }
+    return out;
+  }
+  function spanScores(draws, idx, win, strategy, rnd) {
+    const rows = E.windowDraws(draws, idx, win), counts = new Array(10).fill(0);
+    for (const d of rows) counts[Math.max(...d.nums) - Math.min(...d.nums)]++;
+    const max = Math.max(1, ...counts);
+    return counts.map((c, span) => ({ v: span, s: Math.max(.001, strategy === 'rand' ? rnd() : strategy === 'cold' ? 1 - c / max : c / max) }));
+  }
+  function sumScores(draws, idx, win, strategy, rnd, group) {
+    const rows = E.windowDraws(draws, idx, win), counts = new Array(28).fill(0);
+    for (const d of rows) counts[d.nums.reduce((a, b) => a + b, 0)]++;
+    const max = Math.max(1, ...counts);
+    return counts.map((c, sum) => ({ v: sum, s: Math.max(.001, strategy === 'rand' ? rnd() : strategy === 'cold' ? 1 - c / max : c / max) })).filter((x) => !group || (x.v > 0 && x.v < 27));
+  }
+  function permutation(n, k) { let r = 1; for (let i = 0; i < k; i++) r *= Math.max(0, n - i); return r; }
+  E.generateDigitExtended = function (opts, feats, scored, rnd) {
+    const { g, draws, idx = draws.length, win = 100, strategy = 'mix', count = 3 } = opts;
+    const mode = opts.mode;
+    const agg = digitAggregate(feats, strategy);
+    const tickets = [], seen = new Set();
+    let guard = 0;
+    const push = (t) => {
+      if (!t.combos || t.combos > 10000) return;
+      const key = JSON.stringify([t.kind, t.nums, t.selections, t.dan, t.tuo, t.spans, t.sums]);
+      if (seen.has(key)) return;
+      seen.add(key); tickets.push(Object.assign({ cost: t.combos * 2 }, t));
+    };
+    while (tickets.length < count && guard++ < Math.max(50, count * 40)) {
+      if (mode === 'direct_compound') {
+        const per = Math.max(2, Math.min(3, Number(opts.digitsPerPos) || 2));
+        const selections = scored.map((row) => sampleSorted(row, per, rnd));
+        const combos = selections.reduce((n, row) => n * row.length, 1);
+        push({ kind: mode, selections, nums: selections.flat(), combos });
+      } else if (mode === 'direct_combo_compound') {
+        const size = Math.max(3, Math.min(6, Number(opts.poolSize) || 4));
+        const nums = sampleSorted(agg, size, rnd);
+        push({ kind: mode, nums, combos: permutation(nums.length, 3) });
+      } else if (mode === 'group3_compound') {
+        const size = Math.max(2, Math.min(6, Number(opts.poolSize) || 4));
+        const nums = sampleSorted(agg, size, rnd);
+        push({ kind: mode, nums, combos: nums.length * (nums.length - 1) });
+      } else if (mode === 'group6_compound') {
+        const size = Math.max(4, Math.min(8, Number(opts.poolSize) || 4));
+        const nums = sampleSorted(agg, size, rnd);
+        push({ kind: mode, nums, combos: ML.comb(nums.length, 3) });
+      } else if (mode === 'group3_dantuo') {
+        const tuoCount = Math.max(2, Math.min(6, Number(opts.tuoCount) || 3));
+        const dan = sampleSorted(agg, 1, rnd), used = new Set(dan);
+        const tuo = sampleSorted(agg.filter((x) => !used.has(x.v)), tuoCount, rnd);
+        push({ kind: mode, dan, tuo, nums: dan.concat(tuo), combos: 2 * tuo.length });
+      } else if (mode === 'group6_dantuo' || mode === 'direct_combo_dantuo') {
+        const danCount = mode === 'group6_dantuo' ? Math.max(1, Math.min(2, Number(opts.danCount) || 1)) : Math.max(1, Math.min(2, Number(opts.danCount) || 1));
+        const total = Math.max(4, Number(opts.totalSize) || (mode === 'group6_dantuo' ? 5 : 5));
+        const dan = sampleSorted(agg, danCount, rnd), used = new Set(dan);
+        const tuo = sampleSorted(agg.filter((x) => !used.has(x.v)), Math.max(1, total - danCount), rnd);
+        const combos = mode === 'group6_dantuo'
+          ? ML.comb(tuo.length, 3 - dan.length)
+          : permutation(dan.length + tuo.length, 3) - permutation(tuo.length, 3);
+        push({ kind: mode, dan, tuo, nums: dan.concat(tuo), combos });
+      } else if (mode.endsWith('_span')) {
+        const spanCount = Math.max(1, Math.min(3, Number(opts.spanCount) || 1));
+        const spans = E.sampleDistinct(spanScores(draws, idx, win, strategy, rnd), spanCount, rnd).sort((a, b) => a - b);
+        const key = mode.startsWith('direct') ? 'direct' : mode.startsWith('group3') ? 'group3' : 'group6';
+        const combos = spans.reduce((n, span) => n + SPAN_COUNTS[key][span], 0);
+        push({ kind: mode, spans, nums: spans, combos });
+      } else if (mode.endsWith('_sum')) {
+        const sumCount = Math.max(1, Math.min(4, Number(opts.sumCount) || 1));
+        const group = mode === 'group_sum';
+        const sums = E.sampleDistinct(sumScores(draws, idx, win, strategy, rnd, group), sumCount, rnd).sort((a, b) => a - b);
+        const combos = sums.reduce((n, sum) => n + SUM_COUNTS[group ? 'group' : 'direct'][sum], 0);
+        push({ kind: mode, sums, nums: sums, combos });
+      } else break;
+    }
+    return { strategy, mode, win, tickets, kind: 'digit', feats };
+  };
+
   function makeSelectionGroup(row, pick, size, danCount, rnd) {
     const total = Math.max(pick, Math.min(80, size));
     if (danCount > 0) {
@@ -357,6 +464,9 @@
       const mode = opts.mode || 'direct';
       const feats = E.digitFeatures(g, draws, idx, win);
       const scored = feats.map((row) => E.scoreRow(row, strategy, rnd, 'd'));
+      if (DIGIT_EXTENDED.has(mode) && (g.key === 'pl3' || g.key === 'pl5' || g.key === 'f3d')) {
+        return E.generateDigitExtended({ ...opts, mode, strategy, win, count, idx }, feats, scored, rnd);
+      }
       if (g.key === 'qxc' && mode !== 'direct') {
         return E.generateQxcComplex({ ...opts, mode, strategy, win, count, feats }, scored, rnd);
       }
