@@ -9,8 +9,7 @@ const SPORT_HEADERS = {
   'Accept': 'application/json, text/plain, */*',
   'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.7',
   'Cache-Control': 'no-cache',
-  'Origin': 'https://static.sporttery.cn',
-  'Referer': 'https://static.sporttery.cn/',
+  'Referer': 'https://www.lottery.gov.cn/',
 };
 const CWL_HEADERS = {
   'User-Agent': UA,
