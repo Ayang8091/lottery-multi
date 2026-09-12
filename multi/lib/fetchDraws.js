@@ -120,3 +120,15 @@ export async function fetchGame(key, onProgress) {
   if (meta.sport) return fetchSport(key, onProgress);
   return fetchCwl(key, onProgress);
 }
+
+// 仅抓取官方接口第一页最新结果，供定时增量同步使用。
+export async function fetchLatest(key, pageSize = 100) {
+  if (!GAME_META[key]) throw new Error('未知游戏 ' + key);
+  const meta = GAME_META[key];
+  if (meta.sport) {
+    const page = await sportPage(meta.sport, 1, pageSize);
+    return clean(key, (page.list || []).map(sportPick));
+  }
+  const page = await cwlPage(meta.cwl, 1, pageSize);
+  return clean(key, (page.result || []).map((o) => cwlPick(o, meta)));
+}

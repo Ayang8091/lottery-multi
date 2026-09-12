@@ -33,9 +33,20 @@ npm run multi          # 仓库根目录 → http://127.0.0.1:8790
 
 ## 更新数据（从官方接口拉最新）
 
+GitHub Pages 线上版本会通过 `.github/workflows/update-data.yml` 按各游戏开奖时间自动同步官方数据，无需手动更新：
+
+- 7星彩：周二、周五、周日 20:50 后
+- 排列3 / 排列5：每日 20:55 后
+- 大乐透：周一、周三、周六 21:35 后
+- 双色球 / 福彩3D：每日 21:40 后
+- 快乐8：每日 21:55 后
+- 每日 22:30 再进行一次全游戏补抓，避免官方延迟
+
+本地也可以更新：
 ```bash
-npm run refresh --prefix multi        # 抓取 7 游戏全部官方历史 → multi/data/all.json
-# 或页面右上角「⟳ 更新数据」仅刷新当前游戏
+npm run refresh --prefix multi              # 增量更新全部游戏
+npm run refresh --prefix multi -- --games=dlt,ssq
+npm run refresh --prefix multi -- --force   # 全量重抓
 ```
 
 ## 测试

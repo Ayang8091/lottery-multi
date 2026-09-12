@@ -94,6 +94,8 @@
         S.updatedAt = null; S.static = true;
         const parts = ML.order.map((k) => `${G[k].name}${S.info[k].total}`).join(' · ');
         $('dataInfo').textContent = '已内置官方历史 ' + parts;
+        $('btnRefresh').textContent = '⟳ 自动同步';
+        $('btnRefresh').title = '线上按各游戏开奖时间自动同步官方数据';
       } catch (staticError) {
         $('dataInfo').textContent = '数据加载失败，请检查数据文件';
       }
