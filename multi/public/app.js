@@ -94,8 +94,6 @@
         S.updatedAt = null; S.static = true;
         const parts = ML.order.map((k) => `${G[k].name}${S.info[k].total}`).join(' · ');
         $('dataInfo').textContent = '已内置官方历史 ' + parts;
-        $('btnRefresh').textContent = '⟳ 自动同步';
-        $('btnRefresh').title = '线上按各游戏开奖时间自动同步官方数据';
       } catch (staticError) {
         $('dataInfo').textContent = '数据加载失败，请检查数据文件';
       }
@@ -1070,7 +1068,7 @@
     } catch (e) { $('lanBody').innerHTML = '<div class="note">获取地址失败：' + esc(e.message) + '</div>'; }
   }
   async function doRefresh() {
-    if (S.static) { toast('GitHub Pages 为静态版本，请在本机刷新数据后重新发布', 'err'); return; }
+    if (S.static) { toast('GitHub Pages 为只读版本，请在本机运行 npm run refresh 后重新发布', 'err'); return; }
     const btn = $('btnRefresh'); const old = btn.textContent;
     btn.disabled = true; btn.textContent = '⟳ 更新中…';
     try {
