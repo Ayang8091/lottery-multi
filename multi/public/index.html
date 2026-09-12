@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>体彩·福彩 多游戏智能参考中心</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🎰</span>
+    <div>
+      <h1>体彩 · 福彩 多游戏智能参考中心</h1>
+      <p class="sub">7 大彩种统一智能体 · 走势统计 / 智能出号 / 验票复盘 / 玩法奖金</p>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="data-info" id="dataInfo">数据加载中…</div>
+    <button class="btn ghost" id="btnLan" title="用手机 / 微信打开本系统">📱 微信/手机打开</button>
+    <button class="btn ghost" id="btnRefresh" title="从官方接口同步当前游戏最新开奖">⟳ 更新数据</button>
+  </div>
+</header>
+
+<div class="catbar">
+  <div class="seg big" id="catSeg">
+    <button class="on" data-cat="tc">🏆 体彩游戏</button>
+    <button data-cat="fc">🎁 福彩游戏</button>
+  </div>
+  <div class="chips" id="gameChips"></div>
+</div>
+
+<div class="ghead" id="ghead"></div>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-tab="overview">📊 开奖总览</button>
+  <button class="tab" data-tab="analysis">🔥 数据分析</button>
+  <button class="tab" data-tab="pick">🎯 智能出号</button>
+  <button class="tab" data-tab="check">✅ 验票复盘</button>
+  <button class="tab" data-tab="rules">📖 玩法奖金</button>
+</nav>
+
+<main>
+  <section class="panel" id="tab-overview"><div class="grid cols-3">
+    <div class="card span-2"><div class="card-h"><span>🕗 最新开奖</span><span class="muted" id="ovLatestMeta"></span></div>
+      <div id="ovLatest" class="balls-lg"></div><div id="ovLatestExtra" class="chips"></div></div>
+    <div class="card"><div class="card-h"><span>⏰ 开奖安排</span></div>
+      <div id="ovSchedule" class="schedule-box"></div></div>
+  </div>
+  <div class="card"><div class="card-h"><span>🕘 最近开奖明细</span><span class="muted" id="ovCount"></span></div>
+    <div id="ovRecent" class="recent-box"></div></div>
+  <div class="card" id="ovMatrixCard" style="display:none"><div class="card-h"><span>📈 近期走势矩阵</span><span class="seg" id="ovMatrixLen"></span></div>
+    <div id="ovMatrix" class="matrix-scroll"></div></div>
+  </section>
+
+  <section class="panel hidden" id="tab-analysis">
+    <div class="card"><div class="card-h"><span>📐 统计窗口</span><span class="seg" id="anaWinSeg"></span></div>
+      <div id="anaNote" class="note"></div></div>
+    <div class="card"><div class="card-h"><span id="freqTitle">🎨 号码出现频率（红=热 / 蓝=冷）</span></div>
+      <div id="freqWrap" class="freq-wrap"></div>
+      <div class="legend"><span class="lg cold">冷</span><span class="lg mid">中</span><span class="lg hot">热</span></div></div>
+    <div class="grid cols-2">
+      <div class="card"><div class="card-h"><span>🔥 热号速查</span></div><div id="hotWrap"></div></div>
+      <div class="card"><div class="card-h"><span>🧊 冷号速查（低频 / 大遗漏）</span></div><div id="coldWrap"></div></div>
+    </div>
+    <div class="card"><div class="card-h"><span>📋 形态统计（窗口均值 vs 最近一期）</span></div>
+      <div id="shapeStats" class="shape-stats"></div>
+      <div class="note">统计仅描述历史分布；开奖为独立随机事件，请理性看待。</div></div>
+  </section>
+
+  <section class="panel hidden" id="tab-pick">
+    <div class="grid cols-pick">
+      <div class="card"><div class="card-h"><span>⚙️ 出号设置</span></div>
+        <div class="field"><label>策略</label><div class="seg wrap" id="pickStratSeg"></div></div>
+        <div class="field" id="pickModeField"><label id="pickModeLabel">玩法</label><div class="seg wrap" id="pickModeSeg"></div></div>
+        <div class="field" id="pickWField" style="display:none"><label>选几玩法（快乐8）</label><div class="seg wrap" id="pickWSeg"></div></div>
+        <div class="field"><label>统计窗口</label><div class="seg" id="pickWinSeg"></div></div>
+        <div class="field"><label>注数（生成方案数）</label>
+          <div class="seg" id="pickCountSeg"></div>
+        </div>
+        <div class="field" id="pickParamField" style="display:none"><label id="pickParamLabel">官方投注参数</label>
+          <div id="pickParams" class="pick-params"></div>
+        </div>
+        <button class="btn primary big" id="btnGenerate">🎯 生成参考号码</button>
+        <div class="disclaimer-mini">生成结果仅为历史统计参考，不构成中奖预测；每期开奖相互独立，请理性购彩。</div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span>🎫 出号结果</span>
+          <span class="actions">
+            <button class="btn small" id="btnShuffle">🎲 换一批</button>
+            <button class="btn small export" id="btnExportImg">🖼 导出结果图片</button>
+            <button class="btn small primary" id="btnCopy">📋 复制全部</button>
+          </span></div>
+        <div id="pickRec" class="pick-pool"></div>
+        <div id="pickResult" class="pick-result"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel hidden" id="tab-check">
+    <div class="grid cols-2">
+      <div class="card"><div class="card-h"><span>🔍 单期验票</span></div>
+        <div class="field"><label id="chkModeLabel">玩法 / 投注方式</label><div class="seg wrap" id="chkModeSeg"></div></div>
+        <div class="field"><label id="chkNumsLabel">你的号码</label>
+          <textarea id="chkNums" rows="2" placeholder="例如：09 11 18 26 33 + 09 11"></textarea>
+          <div class="quick-note"><button class="btn tiny" id="btnUseLastPick">↩ 填入上次智选</button></div></div>
+        <div class="field"><label>对照期号（最近 60 期）</label><select id="chkDrawSel"></select></div>
+        <button class="btn primary" id="btnCheck">✅ 开始验票</button>
+        <div id="chkResult" class="check-result"></div>
+      </div>
+      <div class="card"><div class="card-h"><span>⏪ 策略历史回测（仅用当期之前数据）</span></div>
+        <div class="field"><label>回测策略</label><div class="seg wrap" id="btStratSeg"></div></div>
+        <div class="field"><label>回测 / 窗口期数</label><div class="seg" id="btLenSeg"></div></div>
+        <div class="field" id="btWField" style="display:none"><label>快乐8 选几</label><div class="seg" id="btWSeg"></div></div>
+        <button class="btn primary" id="btnBacktest">⏪ 开始回测</button>
+        <div class="note" id="btNote"></div>
+        <div id="btResult" class="bt-result"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel hidden" id="tab-rules">
+    <div class="grid cols-2">
+      <div class="card"><div class="card-h"><span>🎮 玩法规则速览</span></div>
+        <div class="rules-text" id="rulesIntro"></div>
+        <ul class="rules-list" id="rulesList"></ul></div>
+      <div class="card"><div class="card-h"><span>💰 单注奖金速查</span></div>
+        <div class="table-wrap"><table class="prize-table" id="prizeTable"></table></div>
+        <div class="note" id="prizeNote"></div></div>
+    </div>
+    <div class="grid cols-2">
+      <div class="card"><div class="card-h"><span>🧮 理论概率参考（每注 2 元）</span></div>
+        <div class="table-wrap"><table class="prize-table" id="probTable"></table></div></div>
+      <div class="card warn-card"><div class="card-h"><span>❤️ 理性购彩提示</span></div>
+        <ul class="rules-list">
+          <li>每期开奖相互独立、完全随机，任何历史走势都无法改变下一期概率。</li>
+          <li>本系统只做“历史统计 + 参考出号 + 验票复盘”，<b>不保证、不暗示中奖</b>。</li>
+          <li>彩票为概率游戏，请量力而行、理性购彩；未成年人不得购买彩票。</li>
+        </ul></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>数据来源：中国体育彩票（sporttery.cn）· 中国福利彩票（cwl.gov.cn）· 本工具仅供个人统计参考，不构成任何投注建议。</p>
+  <p>彩票有风险，投注需理性 · 未成年人不得购买彩票</p>
+</footer>
+
+<div class="modal-mask hidden" id="lanModal"><div class="modal">
+  <div class="modal-h"><span>📱 用手机 / 微信打开本系统</span><button class="btn tiny close" id="lanClose">✕</button></div>
+  <div id="lanBody" class="lan-body">加载中…</div>
+</div></div>
+<div class="toast" id="toast"></div>
+<script src="prizes.js?v=20260912c"></script>
+<script src="engine.js?v=20260912c"></script>
+<script src="app.js?v=20260912c"></script>
+</body>
+</html>

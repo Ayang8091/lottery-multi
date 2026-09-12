@@ -1,0 +1,13 @@
+{
+  "name": "lottery-multi-center",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "体彩·福彩 多游戏智能参考中心：大乐透/七星彩/排列3/排列5 + 双色球/快乐8/福彩3D 统一智能体（本地应用，零第三方依赖）",
+  "scripts": {
+    "start": "node server.js",
+    "refresh": "node scripts/fetch.js",
+    "test": "node --test test/multi.test.js"
+  },
+  "engines": { "node": ">=18" }
+}
