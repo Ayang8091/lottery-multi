@@ -164,6 +164,12 @@ test('排列3 / 福彩3D复式与胆拖注数符合官方组合规则', () => {
   assert.equal(run('kl8', 'dantuo', { w: 10, danCount: 9, tuoCount: 2 }).combos, 2);
   assert.equal(run('pl3', 'group6_dantuo', { danCount: 2, tuoCount: 2 }).combos, 2);
   assert.equal(run('f3d', 'direct_combo_dantuo', { danCount: 2, tuoCount: 2 }).combos, 24);
+  assert.equal(run('kl8', 'dantuo', { w: 5, danCount: 1, tuoCount: 79 }).combos, ML.comb(79, 4));
+  assert.equal(run('kl8', 'dantuo', { w: 5, danCount: 4, tuoCount: 76 }).combos, 76);
+  assert.equal(run('dlt', 'front_dantuo', { mainDan: 1, mainTuo: 34 }).combos, ML.comb(34, 4));
+  assert.equal(run('ssq', 'red_dantuo', { mainDan: 1, mainTuo: 32 }).combos, ML.comb(32, 5));
+  assert.equal(run('pl3', 'group3_dantuo', { tuoCount: 9 }).combos, 18);
+  assert.equal(run('f3d', 'group6_dantuo', { danCount: 2, tuoCount: 8 }).combos, 8);
 });
 
 test('统一引擎：7 游戏可出号 + 回测均值接近理论', () => {

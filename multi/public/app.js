@@ -365,6 +365,12 @@
     const current = paramValue(key, options[0] && options[0][0]);
     return `<div class="param-row pick-param" data-param-key="${key}"><label>${label}</label><div class="seg wrap param-seg">${segHtml(options, current, 'pv')}</div></div>`;
   }
+  function dragControl(key, label, min, max) {
+    const current = safeCount(key, min, max, min);
+    let options = '';
+    for (let i = min; i <= max; i++) options += `<option value="${i}"${i === current ? ' selected' : ''}>${i === max ? `全拖（${i}拖）` : `${i}拖`}</option>`;
+    return `<div class="param-row pick-param" data-param-key="${key}"><label>${label}</label><select class="param-select">${options}</select></div>`;
+  }
   function renderPickSettings() {
     const g = G[S.game];
     const modes = pickModeOptions(g);
@@ -395,26 +401,24 @@
       if (mode === 'back_compound' || mode === 'full_compound') controls.push(paramControl('subSize', '后区选号个数', numberOptions(3, 6, '码')));
       if (mode === 'front_dantuo' || mode === 'full_dantuo') {
         const dan = safeCount('mainDan', 1, 4, 1);
-        const minTuo = Math.max(2, 6 - dan);
-        const tuo = safeCount('mainTuo', minTuo, 8, minTuo);
+        const minTuo = Math.max(2, 6 - dan), maxTuo = 35 - dan;
+        safeCount('mainTuo', minTuo, maxTuo, minTuo);
         controls.push(paramControl('mainDan', '前区胆码个数', numberOptions(1, 4, '胆')));
-        controls.push(paramControl('mainTuo', '前区拖码个数', numberOptions(minTuo, 8, '拖')));
-        if (tuo < minTuo) S.pick.params.mainTuo = minTuo;
+        controls.push(dragControl('mainTuo', '前区拖码个数', minTuo, maxTuo));
       }
       if (mode === 'back_dantuo' || mode === 'full_dantuo') {
-        safeCount('subTuo', 2, 5, 2);
-        controls.push(paramControl('subTuo', '后区拖码个数（胆码固定1个）', numberOptions(2, 5, '拖')));
+        safeCount('subTuo', 2, 11, 2);
+        controls.push(dragControl('subTuo', '后区拖码个数（胆码固定1个）', 2, 11));
       }
     } else if (g.key === 'ssq') {
       if (mode === 'red_compound' || mode === 'full_compound') controls.push(paramControl('mainSize', '红球选号个数', numberOptions(7, 10, '码')));
       if (mode === 'blue_compound' || mode === 'full_compound' || mode === 'full_dantuo') controls.push(paramControl('subSize', '蓝球选号个数', numberOptions(2, 6, '码')));
       if (mode === 'red_dantuo' || mode === 'full_dantuo') {
         const dan = safeCount('mainDan', 1, 5, 1);
-        const minTuo = Math.max(2, 7 - dan);
-        const tuo = safeCount('mainTuo', minTuo, 8, minTuo);
+        const minTuo = Math.max(2, 7 - dan), maxTuo = 33 - dan;
+        safeCount('mainTuo', minTuo, maxTuo, minTuo);
         controls.push(paramControl('mainDan', '红球胆码个数', numberOptions(1, 5, '胆')));
-        controls.push(paramControl('mainTuo', '红球拖码个数', numberOptions(minTuo, 8, '拖')));
-        if (tuo < minTuo) S.pick.params.mainTuo = minTuo;
+        controls.push(dragControl('mainTuo', '红球拖码个数', minTuo, maxTuo));
       }
     } else if (g.key === 'qxc' && mode !== 'direct') {
       controls.push(paramControl('digitsPerPos', '每个复式位选号', [[2, '2个'], [3, '3个']]));
@@ -423,13 +427,16 @@
       if (mode === 'direct_combo_compound') controls.push(paramControl('poolSize', '组合选号个数', numberOptions(3, 6, '码')));
       if (mode === 'group3_compound') controls.push(paramControl('poolSize', '组选3选号个数', numberOptions(2, 6, '码')));
       if (mode === 'group6_compound') controls.push(paramControl('poolSize', '组选6选号个数', numberOptions(4, 8, '码')));
-      if (mode === 'group3_dantuo') controls.push(paramControl('tuoCount', '拖码个数（胆码固定1个）', numberOptions(2, 6, '拖')));
+      if (mode === 'group3_dantuo') {
+        safeCount('tuoCount', 2, 9, 2);
+        controls.push(dragControl('tuoCount', '拖码个数（胆码固定1个）', 2, 9));
+      }
       if (mode === 'group6_dantuo' || mode === 'direct_combo_dantuo') {
         const dan = safeCount('danCount', 1, 2, 1);
-        const minTuo = Math.max(2, 4 - dan);
-        safeCount('tuoCount', minTuo, 8, minTuo);
+        const minTuo = Math.max(2, 4 - dan), maxTuo = 10 - dan;
+        safeCount('tuoCount', minTuo, maxTuo, minTuo);
         controls.push(paramControl('danCount', '胆码个数', numberOptions(1, 2, '胆')));
-        controls.push(paramControl('tuoCount', '拖码个数', numberOptions(minTuo, 8, '拖')));
+        controls.push(dragControl('tuoCount', '拖码个数', minTuo, maxTuo));
       }
       if (mode.endsWith('_span')) controls.push(paramControl('spanCount', '选择跨度个数', numberOptions(1, 3, '个')));
       if (mode.endsWith('_sum')) controls.push(paramControl('sumCount', '选择和值个数', numberOptions(1, 4, '个')));
@@ -437,11 +444,10 @@
       if (mode === 'compound') controls.push(paramControl('extra', '超出单式的加选码', numberOptions(1, 3, '码')));
       if (mode === 'dantuo' && S.pick.w > 1) {
         const dan = safeCount('danCount', 1, S.pick.w - 1, 1);
-        const minTuo = S.pick.w - dan + 1;
-        const maxTuo = Math.min(20 - dan, minTuo + 4);
+        const minTuo = S.pick.w - dan + 1, maxTuo = 80 - dan;
         safeCount('tuoCount', minTuo, maxTuo, minTuo);
         controls.push(paramControl('danCount', '胆码个数', numberOptions(1, S.pick.w - 1, '胆')));
-        controls.push(paramControl('tuoCount', '拖码个数', numberOptions(minTuo, maxTuo, '拖')));
+        controls.push(dragControl('tuoCount', '拖码个数', minTuo, maxTuo));
       }
     } else if (g.key === 'f3d') {
       if (mode === '1d') controls.push(paramControl('pos', '指定位置', [[0, '百位'], [1, '十位'], [2, '个位']]));
@@ -455,17 +461,18 @@
     $('pickParams').innerHTML = controls.filter(Boolean).join('');
     $('pickParams').querySelectorAll('.pick-param').forEach((row) => {
       const key = row.dataset.paramKey;
-      row.querySelectorAll('button').forEach((b) => {
-        b.onclick = () => {
-          let value = b.dataset.pv;
-          if (value === 'true') value = true;
-          else if (value === 'false') value = false;
-          else if (key === 'positions') value = value.split(',').map(Number);
-          else if (/^\d+$/.test(value)) value = Number(value);
-          S.pick.params[key] = value;
-          renderPickSettings();
-        };
-      });
+      const assign = (raw) => {
+        let value = raw;
+        if (value === 'true') value = true;
+        else if (value === 'false') value = false;
+        else if (key === 'positions') value = value.split(',').map(Number);
+        else if (/^\d+$/.test(value)) value = Number(value);
+        S.pick.params[key] = value;
+        renderPickSettings();
+      };
+      row.querySelectorAll('button').forEach((b) => { b.onclick = () => assign(b.dataset.pv); });
+      const select = row.querySelector('select');
+      if (select) select.onchange = () => assign(select.value);
     });
     $('pickWinSeg').innerHTML = segHtml(WINS, S.pick.win, 'n');
     bindSeg('pickWinSeg', 'n', (v) => { S.pick.win = Number(v); });

@@ -161,6 +161,8 @@ textarea:focus,select:focus{outline:none;border-color:var(--cyan)}
 .pick-params .param-row{display:grid;grid-template-columns:88px 1fr;align-items:center;gap:8px}
 .pick-params .param-row>label{font-size:12px;color:var(--mut);margin:0}
 .pick-params .param-seg{width:100%}
+.pick-params .param-select{width:100%;background:#0b1230;color:#eaf3ff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;outline:none}
+.pick-params .param-select:focus{border-color:rgba(53,224,255,.65);box-shadow:0 0 0 2px rgba(53,224,255,.12)}
 @media (max-width:560px){.pick-params .param-row{grid-template-columns:1fr}.pick-params .param-row>label{margin-bottom:2px}}
 .ticket{background:linear-gradient(120deg,#1a2550,#131c3e);border:1px solid #2a3a70;border-radius:14px;padding:12px 14px;margin-bottom:10px}
 .ticket .t-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;color:var(--mut)}

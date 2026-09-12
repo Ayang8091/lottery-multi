@@ -258,7 +258,7 @@
     const tickets = [], seen = new Set();
     let guard = 0;
     const push = (t) => {
-      if (!t.combos || t.combos > 10000) return;
+      if (!t.combos) return;
       const key = JSON.stringify([t.kind, t.nums, t.selections, t.dan, t.tuo, t.spans, t.sums]);
       if (seen.has(key)) return;
       seen.add(key); tickets.push(Object.assign({ cost: t.combos * 2 }, t));
@@ -282,7 +282,7 @@
         const nums = sampleSorted(agg, size, rnd);
         push({ kind: mode, nums, combos: ML.comb(nums.length, 3) });
       } else if (mode === 'group3_dantuo') {
-        const tuoCount = Math.max(2, Math.min(6, Number(opts.tuoCount) || 3));
+        const tuoCount = Math.max(2, Math.min(9, Number(opts.tuoCount) || 3));
         const dan = sampleSorted(agg, 1, rnd), used = new Set(dan);
         const tuo = sampleSorted(agg.filter((x) => !used.has(x.v)), tuoCount, rnd);
         push({ kind: mode, dan, tuo, nums: dan.concat(tuo), combos: 2 * tuo.length });
@@ -558,7 +558,7 @@
         else { sizes = [6, 1]; dans = [0, 0]; }
       }
       const ticket = makeSetTicket(scored, groups, sizes, dans, mode, { rnd, picks: isKl8 ? [Math.max(1, Math.min(10, Number(opts.w) || 10))] : undefined, w: isKl8 ? (Math.max(1, Math.min(10, Number(opts.w) || 10))) : undefined });
-      if (!ticket.combos || ticket.combos > 10000) continue;
+      if (!ticket.combos) continue;
       const key = ticket.selections.map((x) => x.kind === 'dantuo' ? 'D' + x.dan.join(',') + '|' + x.tuo.join(',') : x.nums.join(',')).join('/');
       if (seen.has(key)) continue;
       seen.add(key);
