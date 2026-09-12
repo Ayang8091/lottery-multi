@@ -1013,16 +1013,17 @@
     ctx.fillStyle = '#687dab'; ctx.font = cn(13, false);
     ctx.fillText('彩票有风险，投注需理性 · 未成年人不得购买彩票 · 体彩 sporttery.cn / 福彩 cwl.gov.cn', W / 2, y + 114);
     const link = document.createElement('a');
-    link.download = `${g.name}_智能参考_${dateStamp()}_${ts.length}注.png`;
+    link.download = `${g.name}_智能参考_${dateStamp()}_${timeStamp()}_${ts.length}注_含高分参考.png`;
     link.href = cv.toDataURL('image/png');
     link.click();
-    toast(`已导出高清结果图片（${W * SCALE} 宽 PNG）`, 'ok');
+    toast(`已导出高清结果图片（${W * SCALE} 宽 PNG，含高分参考）`, 'ok');
   }
   function nowStr() {
     const d = new Date();
     return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
   function dateStamp() { const d = new Date(); return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`; }
+  function timeStamp() { const d = new Date(); return `${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`; }
   function modeLabel(g, mode, w) {
     const base = ML.playLabel(g.key, mode || 'direct');
     return g.key === 'kl8' ? `选${['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][w || 10]} · ${base}` : base;
