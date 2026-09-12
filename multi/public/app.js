@@ -603,7 +603,8 @@
       html += `<div class="pick-pool" style="margin-bottom:0">${rows}</div>`;
     } else {
       const rank = (a, b) => (b.fFreq * 2 + b.fRec + b.fTrend * 0.5) - (a.fFreq * 2 + a.fRec + a.fTrend * 0.5);
-      const groups = feats.map((row) => row.slice().sort(rank).slice(0, 10).map((x) => pad2(x.n)).join(' '));
+      const limits = g.key === 'dlt' ? [10, 5] : g.key === 'ssq' ? [11, 5] : g.key === 'kl8' ? [20] : g.groups.map(() => 10);
+      const groups = feats.map((row, i) => row.slice().sort(rank).slice(0, limits[i] || 10).map((x) => pad2(x.n)).join(' '));
       html += `<div class="pick-pool" style="margin-bottom:0">${g.groups.map((grp, i) => `<span class="pool-num"><b>${grp.name}</b> ${groups[i]}</span>`).join('')}</div>`;
     }
     return html;
