@@ -865,6 +865,23 @@
     add(g.key === 'kl8' ? '选号' : '号码', t.nums, 'gold');
     return rows;
   }
+  function exportRefRows(g, feats) {
+    if (!Array.isArray(feats) || !feats.length) return [];
+    const rank = (a, b) => (b.fFreq * 2 + b.fRec + b.fTrend * 0.5) - (a.fFreq * 2 + a.fRec + a.fTrend * 0.5);
+    if (g.kind === 'digit') {
+      return feats.map((row, p) => ({
+        label: g.positions[p] || `第${p + 1}位`,
+        nums: row.slice().sort(rank).slice(0, 5).map((x) => x.d),
+        color: p === 6 && g.key === 'qxc' ? 'purple' : 'blue',
+      }));
+    }
+    const limits = g.key === 'dlt' ? [10, 5] : g.key === 'ssq' ? [11, 5] : g.key === 'kl8' ? [20] : g.groups.map(() => 10);
+    return feats.map((row, i) => ({
+      label: g.key === 'kl8' ? '开奖号码' : g.groups[i].name,
+      nums: row.slice().sort(rank).slice(0, limits[i] || 10).map((x) => x.n),
+      color: g.groups[i] ? g.groups[i].cls : 'gold',
+    }));
+  }
   function exportColor(color) {
     const map = {
       red: ['#ff8298', '#d92f52'], blue: ['#72d3ff', '#247bd8'], gold: ['#ffe28a', '#d99b16'],
@@ -922,8 +939,11 @@
     const stName = (STRATS.find((x) => x[0] === S.pick.strategy) || [])[1] || S.pick.strategy;
     const modeName = info ? modeLabel(g, info.mode, info.w) : '';
     const headH = 292, metaH = 112, footH = 220, gap = 18;
+    const refRows = exportRefRows(g, info && info.feats);
+    const refBodyH = refRows.reduce((sum, row) => sum + exportRowHeight(row, innerW), 0);
+    const refH = refRows.length ? 74 + refBodyH + 30 : 0;
     const cardHeights = ts.map((t) => exportTicketHeight(g, t, innerW));
-    const H = headH + metaH + cardHeights.reduce((a, b) => a + b + gap, 0) + footH;
+    const H = headH + metaH + refH + (refH ? gap : 0) + cardHeights.reduce((a, b) => a + b + gap, 0) + footH;
     const cv = document.createElement('canvas'); cv.width = W * SCALE; cv.height = H * SCALE;
     const ctx = cv.getContext('2d'); ctx.scale(SCALE, SCALE);
     const cn = (px, bold) => `${bold ? '700 ' : '400 '}${px}px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif`;
@@ -952,6 +972,20 @@
       ctx.fillStyle = '#f5f8ff'; ctx.font = cn(17, true); ctx.fillText(it[1], cx, infoY + 46);
     });
     let y = headH + metaH - 24;
+    if (refRows.length) {
+      ctx.fillStyle = 'rgba(14,27,61,.94)'; roundRect(ctx, M, y, cardW, refH, 20); ctx.fill();
+      ctx.strokeStyle = g.cat === 'fc' ? 'rgba(255,209,92,.42)' : 'rgba(53,224,255,.40)'; ctx.lineWidth = 1.3; ctx.stroke();
+      ctx.fillStyle = accent; roundRect(ctx, M, y + 16, 5, refH - 32, 4); ctx.fill();
+      ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.font = cn(18, true); ctx.fillText('✦ 高分参考号码', M + 28, y + 32);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#7f95c7'; ctx.font = cn(12, false); ctx.fillText('按当前策略评分排序', W - M - 26, y + 32);
+      let refY = y + 60;
+      refRows.forEach((row) => {
+        ctx.textAlign = 'right'; ctx.fillStyle = '#8fa5d5'; ctx.font = cn(13, true); ctx.fillText(row.label, M + 116, refY + 22);
+        drawExportRow(ctx, g, row, M + 134, refY, innerW);
+        refY += exportRowHeight(row, innerW);
+      });
+      y += refH + gap;
+    }
     ts.forEach((t, i) => {
       const rows = exportRows(g, t), cardH = cardHeights[i];
       ctx.fillStyle = 'rgba(17,29,63,.96)'; roundRect(ctx, M, y, cardW, cardH, 20); ctx.fill();
