@@ -3,7 +3,36 @@
 // 福彩：双色球(ssq)、快乐8(kl8)、福彩3D(3d)              → www.cwl.gov.cn
 const SPORT_API = 'https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry';
 const CWL_API = 'https://www.cwl.gov.cn/cwl_admin/front/cwlkj/search/kjxx/findDrawNotice';
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+const SPORT_HEADERS = {
+  'User-Agent': UA,
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.7',
+  'Cache-Control': 'no-cache',
+  'Origin': 'https://static.sporttery.cn',
+  'Referer': 'https://static.sporttery.cn/',
+};
+const CWL_HEADERS = {
+  'User-Agent': UA,
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.7',
+  'Referer': 'https://www.cwl.gov.cn/',
+};
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function requestJson(url, headers, label) {
+  let last;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await fetch(url, { headers });
+      if (res.ok) return await res.json();
+      last = new Error(`${label} HTTP ${res.status}`);
+    } catch (e) {
+      last = new Error(`${label} 请求失败：${e.message}`);
+    }
+    if (attempt < 3) await sleep(1200 * (attempt + 1));
+  }
+  throw last;
+}
 
 // 游戏元信息（gameNo / cwl name / 号码分组）
 export const GAME_META = {
@@ -19,9 +48,7 @@ export const GAME_META = {
 // ---------- 体彩 sporttery ----------
 async function sportPage(gameNo, pageNo, pageSize) {
   const url = `${SPORT_API}?gameNo=${gameNo}&provinceId=0&pageSize=${pageSize}&isVerify=1&pageNo=${pageNo}`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA, Referer: 'https://www.sporttery.cn/' } });
-  if (!res.ok) throw new Error(`体彩接口 HTTP ${res.status}`);
-  const json = await res.json();
+  const json = await requestJson(url, SPORT_HEADERS, '体彩接口');
   if (!json.success) throw new Error(`体彩接口错误 ${json.errorCode || ''} ${json.errorMessage || ''}`);
   return json.value || {};
 }
@@ -55,9 +82,7 @@ async function fetchSport(key, onProgress) {
 // ---------- 福彩 cwl ----------
 async function cwlPage(name, pageNo, pageSize) {
   const url = `${CWL_API}?name=${name}&pageNo=${pageNo}&pageSize=${pageSize}&systemType=PC`;
-  const res = await fetch(url, { headers: { 'User-Agent': UA, Referer: 'https://www.cwl.gov.cn/' } });
-  if (!res.ok) throw new Error(`福彩接口 HTTP ${res.status}`);
-  const json = await res.json();
+  const json = await requestJson(url, CWL_HEADERS, '福彩接口');
   if (json.state !== 0) throw new Error(`福彩接口 state=${json.state} ${json.message || ''}`);
   return json;
 }
