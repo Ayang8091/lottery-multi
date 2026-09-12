@@ -1,6 +1,7 @@
 // 多游戏智能参考中心 —— 官方历史抓取（零第三方依赖）
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import os from 'node:os';
 // 体彩：大乐透(85)、七星彩(04)、排列3(35)、排列5(350133)  → webapi.sporttery.cn
 // 福彩：双色球(ssq)、快乐8(kl8)、福彩3D(3d)              → www.cwl.gov.cn
 const SPORT_API = 'https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry';
@@ -21,9 +22,19 @@ const CWL_HEADERS = {
 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const execFileAsync = promisify(execFile);
-async function requestJson(url, headers, label) {
+const SPORT_COOKIE = `${os.tmpdir()}/sporttery-cookies.txt`;
+let sportWarmed = false;
+async function warmSportSession() {
+  if (sportWarmed) return;
+  const args = ['-sS', '-L', '--max-time', '30', '-c', SPORT_COOKIE, '-A', UA, '-H', 'Referer: https://www.lottery.gov.cn/', '-o', '/dev/null', 'https://www.lottery.gov.cn/kj/kjlb.html?dlt'];
+  await execFileAsync('curl', args, { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
+  sportWarmed = true;
+}
+async function requestJson(url, headers, label, cookieFile) {
   let last;
+  if (cookieFile) await warmSportSession();
   const curlArgs = ['-sS', '-L', '--fail-with-body', '--max-time', '30', '-A', headers['User-Agent']];
+  if (cookieFile) curlArgs.push('-b', cookieFile);
   for (const [key, value] of Object.entries(headers)) {
     if (key !== 'User-Agent') curlArgs.push('-H', `${key}: ${value}`);
   }
@@ -55,7 +66,7 @@ export const GAME_META = {
 // ---------- 体彩 sporttery ----------
 async function sportPage(gameNo, pageNo, pageSize) {
   const url = `${SPORT_API}?gameNo=${gameNo}&provinceId=0&pageSize=${pageSize}&isVerify=1&pageNo=${pageNo}`;
-  const json = await requestJson(url, SPORT_HEADERS, '体彩接口');
+  const json = await requestJson(url, SPORT_HEADERS, '体彩接口', SPORT_COOKIE);
   if (!json.success) throw new Error(`体彩接口错误 ${json.errorCode || ''} ${json.errorMessage || ''}`);
   return json.value || {};
 }
