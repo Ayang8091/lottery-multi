@@ -288,9 +288,10 @@
         push({ kind: mode, dan, tuo, nums: dan.concat(tuo), combos: 2 * tuo.length });
       } else if (mode === 'group6_dantuo' || mode === 'direct_combo_dantuo') {
         const danCount = mode === 'group6_dantuo' ? Math.max(1, Math.min(2, Number(opts.danCount) || 1)) : Math.max(1, Math.min(2, Number(opts.danCount) || 1));
-        const total = Math.max(4, Number(opts.totalSize) || (mode === 'group6_dantuo' ? 5 : 5));
+        const minTuo = Math.max(2, 4 - danCount);
+        const tuoCount = Math.max(minTuo, Number(opts.tuoCount) || minTuo);
         const dan = sampleSorted(agg, danCount, rnd), used = new Set(dan);
-        const tuo = sampleSorted(agg.filter((x) => !used.has(x.v)), Math.max(1, total - danCount), rnd);
+        const tuo = sampleSorted(agg.filter((x) => !used.has(x.v)), tuoCount, rnd);
         const combos = mode === 'group6_dantuo'
           ? ML.comb(tuo.length, 3 - dan.length)
           : permutation(dan.length + tuo.length, 3) - permutation(tuo.length, 3);
@@ -523,8 +524,10 @@
           sizes = [Math.min(80, Math.max(w + 1, w + extra))];
           dans = [0];
         } else if (mode === 'dantuo' && w > 1) {
-          sizes = [Math.min(80, Math.max(w + 1, w + extra))];
-          dans = [Math.max(1, Math.min(w - 1, Number(opts.danCount) || 1))];
+          const danCount = Math.max(1, Math.min(w - 1, Number(opts.danCount) || 1));
+          const tuoCount = Math.max(w - danCount + 1, Number(opts.tuoCount) || Math.max(w + 1, w + extra) - danCount);
+          sizes = [danCount + tuoCount];
+          dans = [danCount];
         } else {
           sizes = [w];
           dans = [0];
@@ -533,22 +536,25 @@
         const mainSize = Math.max(g.groups[0].pick, Number(opts.mainSize) || 7);
         const subSize = Math.max(g.groups[1].pick, Number(opts.subSize) || 3);
         const mainDan = Math.max(1, Math.min(g.groups[0].pick - 1, Number(opts.mainDan) || 1));
+        const mainTuo = Math.max(g.groups[0].pick - mainDan + 1, Number(opts.mainTuo) || (g.groups[0].pick - mainDan + 1));
+        const subTuo = Math.max(2, Number(opts.subTuo) || 2);
         if (mode === 'front_compound') { sizes = [mainSize, 2]; dans = [0, 0]; }
         else if (mode === 'back_compound') { sizes = [5, subSize]; dans = [0, 0]; }
         else if (mode === 'full_compound') { sizes = [mainSize, subSize]; dans = [0, 0]; }
-        else if (mode === 'front_dantuo') { sizes = [Math.max(6, mainSize), 2]; dans = [mainDan, 0]; }
-        else if (mode === 'back_dantuo') { sizes = [5, Math.max(3, subSize)]; dans = [0, 1]; }
-        else if (mode === 'full_dantuo') { sizes = [Math.max(6, mainSize), Math.max(3, subSize)]; dans = [mainDan, 1]; }
+        else if (mode === 'front_dantuo') { sizes = [mainDan + mainTuo, 2]; dans = [mainDan, 0]; }
+        else if (mode === 'back_dantuo') { sizes = [5, 1 + subTuo]; dans = [0, 1]; }
+        else if (mode === 'full_dantuo') { sizes = [mainDan + mainTuo, 1 + subTuo]; dans = [mainDan, 1]; }
         else { sizes = [5, 2]; dans = [0, 0]; }
       } else {
         const mainSize = Math.max(g.groups[0].pick, Number(opts.mainSize) || 7);
         const subSize = Math.max(g.groups[1].pick, Number(opts.subSize) || 3);
         const mainDan = Math.max(1, Math.min(g.groups[0].pick - 1, Number(opts.mainDan) || 1));
+        const mainTuo = Math.max(g.groups[0].pick - mainDan + 1, Number(opts.mainTuo) || (g.groups[0].pick - mainDan + 1));
         if (mode === 'red_compound') { sizes = [mainSize, 1]; dans = [0, 0]; }
         else if (mode === 'blue_compound') { sizes = [6, subSize]; dans = [0, 0]; }
         else if (mode === 'full_compound') { sizes = [mainSize, subSize]; dans = [0, 0]; }
-        else if (mode === 'red_dantuo') { sizes = [Math.max(7, mainSize), 1]; dans = [mainDan, 0]; }
-        else if (mode === 'full_dantuo') { sizes = [Math.max(7, mainSize), Math.max(2, subSize)]; dans = [mainDan, 0]; }
+        else if (mode === 'red_dantuo') { sizes = [mainDan + mainTuo, 1]; dans = [mainDan, 0]; }
+        else if (mode === 'full_dantuo') { sizes = [mainDan + mainTuo, Math.max(2, subSize)]; dans = [mainDan, 0]; }
         else { sizes = [6, 1]; dans = [0, 0]; }
       }
       const ticket = makeSetTicket(scored, groups, sizes, dans, mode, { rnd, picks: isKl8 ? [Math.max(1, Math.min(10, Number(opts.w) || 10))] : undefined, w: isKl8 ? (Math.max(1, Math.min(10, Number(opts.w) || 10))) : undefined });

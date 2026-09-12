@@ -354,6 +354,13 @@
     for (let i = start; i <= end; i++) out.push([i, String(i) + (suffix || '')]);
     return out;
   }
+  function safeCount(key, min, max, fallback) {
+    let value = Number(paramValue(key, fallback));
+    if (!Number.isFinite(value)) value = fallback;
+    value = Math.max(min, Math.min(max, Math.round(value)));
+    S.pick.params[key] = value;
+    return value;
+  }
   function paramControl(key, label, options) {
     const current = paramValue(key, options[0] && options[0][0]);
     return `<div class="param-row pick-param" data-param-key="${key}"><label>${label}</label><div class="seg wrap param-seg">${segHtml(options, current, 'pv')}</div></div>`;
@@ -384,16 +391,31 @@
     const allowedTimes = [1, 2, 5, 10, maxTimes];
     if (!allowedTimes.includes(Number(paramValue('times', 1)))) S.pick.params.times = 1;
     if (g.key === 'dlt') {
-      const main = mode.includes('compound') && (mode === 'front_compound' || mode === 'full_compound') ? paramControl('mainSize', '前区选号个数', numberOptions(6, 10, '码')) : '';
-      const sub = (mode === 'back_compound' || mode === 'full_compound') ? paramControl('subSize', '后区选号个数', numberOptions(3, 6, '码')) : '';
-      const dan = mode.includes('dantuo') && (mode === 'front_dantuo' || mode === 'full_dantuo') ? paramControl('mainDan', '前区胆码', numberOptions(1, 4, '胆')) : '';
-      const subDan = (mode === 'back_dantuo' || mode === 'full_dantuo') ? paramControl('subSize', '后区号码总数', numberOptions(3, 6, '码')) : '';
-      controls.push(main, sub, dan, subDan);
+      if (mode === 'front_compound' || mode === 'full_compound') controls.push(paramControl('mainSize', '前区选号个数', numberOptions(6, 10, '码')));
+      if (mode === 'back_compound' || mode === 'full_compound') controls.push(paramControl('subSize', '后区选号个数', numberOptions(3, 6, '码')));
+      if (mode === 'front_dantuo' || mode === 'full_dantuo') {
+        const dan = safeCount('mainDan', 1, 4, 1);
+        const minTuo = Math.max(2, 6 - dan);
+        const tuo = safeCount('mainTuo', minTuo, 8, minTuo);
+        controls.push(paramControl('mainDan', '前区胆码个数', numberOptions(1, 4, '胆')));
+        controls.push(paramControl('mainTuo', '前区拖码个数', numberOptions(minTuo, 8, '拖')));
+        if (tuo < minTuo) S.pick.params.mainTuo = minTuo;
+      }
+      if (mode === 'back_dantuo' || mode === 'full_dantuo') {
+        safeCount('subTuo', 2, 5, 2);
+        controls.push(paramControl('subTuo', '后区拖码个数（胆码固定1个）', numberOptions(2, 5, '拖')));
+      }
     } else if (g.key === 'ssq') {
-      const main = (mode === 'red_compound' || mode === 'full_compound' || mode === 'red_dantuo' || mode === 'full_dantuo') ? paramControl('mainSize', '红球号码总数', numberOptions(7, 10, '码')) : '';
-      const sub = (mode === 'blue_compound' || mode === 'full_compound' || mode === 'full_dantuo') ? paramControl('subSize', '蓝球选号个数', numberOptions(2, 6, '码')) : '';
-      const dan = (mode === 'red_dantuo' || mode === 'full_dantuo') ? paramControl('mainDan', '红球胆码', numberOptions(1, 5, '胆')) : '';
-      controls.push(main, sub, dan);
+      if (mode === 'red_compound' || mode === 'full_compound') controls.push(paramControl('mainSize', '红球选号个数', numberOptions(7, 10, '码')));
+      if (mode === 'blue_compound' || mode === 'full_compound' || mode === 'full_dantuo') controls.push(paramControl('subSize', '蓝球选号个数', numberOptions(2, 6, '码')));
+      if (mode === 'red_dantuo' || mode === 'full_dantuo') {
+        const dan = safeCount('mainDan', 1, 5, 1);
+        const minTuo = Math.max(2, 7 - dan);
+        const tuo = safeCount('mainTuo', minTuo, 8, minTuo);
+        controls.push(paramControl('mainDan', '红球胆码个数', numberOptions(1, 5, '胆')));
+        controls.push(paramControl('mainTuo', '红球拖码个数', numberOptions(minTuo, 8, '拖')));
+        if (tuo < minTuo) S.pick.params.mainTuo = minTuo;
+      }
     } else if (g.key === 'qxc' && mode !== 'direct') {
       controls.push(paramControl('digitsPerPos', '每个复式位选号', [[2, '2个'], [3, '3个']]));
     } else if (g.key === 'pl3' || g.key === 'pl5' || g.key === 'f3d') {
@@ -401,16 +423,26 @@
       if (mode === 'direct_combo_compound') controls.push(paramControl('poolSize', '组合选号个数', numberOptions(3, 6, '码')));
       if (mode === 'group3_compound') controls.push(paramControl('poolSize', '组选3选号个数', numberOptions(2, 6, '码')));
       if (mode === 'group6_compound') controls.push(paramControl('poolSize', '组选6选号个数', numberOptions(4, 8, '码')));
-      if (mode === 'group3_dantuo') controls.push(paramControl('tuoCount', '拖码个数', numberOptions(2, 6, '拖')));
+      if (mode === 'group3_dantuo') controls.push(paramControl('tuoCount', '拖码个数（胆码固定1个）', numberOptions(2, 6, '拖')));
       if (mode === 'group6_dantuo' || mode === 'direct_combo_dantuo') {
+        const dan = safeCount('danCount', 1, 2, 1);
+        const minTuo = Math.max(2, 4 - dan);
+        safeCount('tuoCount', minTuo, 8, minTuo);
         controls.push(paramControl('danCount', '胆码个数', numberOptions(1, 2, '胆')));
-        controls.push(paramControl('totalSize', '胆码+拖码总数', numberOptions(4, 8, '码')));
+        controls.push(paramControl('tuoCount', '拖码个数', numberOptions(minTuo, 8, '拖')));
       }
       if (mode.endsWith('_span')) controls.push(paramControl('spanCount', '选择跨度个数', numberOptions(1, 3, '个')));
       if (mode.endsWith('_sum')) controls.push(paramControl('sumCount', '选择和值个数', numberOptions(1, 4, '个')));
     } else if (g.key === 'kl8') {
-      if (mode === 'compound' || (mode === 'dantuo' && S.pick.w > 1)) controls.push(paramControl('extra', '超出单式的加选码', numberOptions(1, 3, '码')));
-      if (mode === 'dantuo' && S.pick.w > 1) controls.push(paramControl('danCount', '胆码个数', numberOptions(1, S.pick.w - 1, '胆')));
+      if (mode === 'compound') controls.push(paramControl('extra', '超出单式的加选码', numberOptions(1, 3, '码')));
+      if (mode === 'dantuo' && S.pick.w > 1) {
+        const dan = safeCount('danCount', 1, S.pick.w - 1, 1);
+        const minTuo = S.pick.w - dan + 1;
+        const maxTuo = Math.min(20 - dan, minTuo + 4);
+        safeCount('tuoCount', minTuo, maxTuo, minTuo);
+        controls.push(paramControl('danCount', '胆码个数', numberOptions(1, S.pick.w - 1, '胆')));
+        controls.push(paramControl('tuoCount', '拖码个数', numberOptions(minTuo, maxTuo, '拖')));
+      }
     } else if (g.key === 'f3d') {
       if (mode === '1d') controls.push(paramControl('pos', '指定位置', [[0, '百位'], [1, '十位'], [2, '个位']]));
       if (mode === '2d') controls.push(paramControl('positions', '指定两位', [['0,1', '百+十'], ['1,2', '十+个'], ['0,2', '百+个']]));
@@ -784,99 +816,159 @@
   // =========================================================
   // ⑥ 导出结果图片（1080 宽 · 槽位化绘制 · 科技风）
   // =========================================================
+  function exportRows(g, t) {
+    const rows = [];
+    const add = (label, nums, color) => { if (nums && nums.length) rows.push({ label, nums: nums.map(Number), color }); };
+    if (t.option) return [{ label: '选项', text: t.label || t.option, color: 'gold' }];
+    if (t.selections) {
+      if (g.kind === 'digit') {
+        t.selections.forEach((row, p) => add(g.positions[p] || `第${p + 1}位`, row, p === 6 ? 'purple' : 'blue'));
+      } else {
+        t.selections.forEach((row, gi) => {
+          const grp = g.groups[gi] || { name: '号码', cls: 'gold' };
+          if (row.kind === 'dantuo') {
+            add(grp.name + '胆码', row.dan, grp.cls);
+            add(grp.name + '拖码', row.tuo, grp.cls + 'Dim');
+          } else add(grp.name, row.nums, grp.cls);
+        });
+      }
+      return rows;
+    }
+    if (t.dan && t.tuo) { add('胆码', t.dan, 'dan'); add('拖码', t.tuo, 'tuo'); return rows; }
+    if (t.spans) { add('跨度', t.spans, 'purple'); return rows; }
+    if (t.sums) { add('和值', t.sums, 'purple'); return rows; }
+    if (t.kind === '1d') { add(`指定${g.positions[t.pos] || '位置'}`, t.nums, 'blue'); return rows; }
+    if (t.kind === 'guess1d') { add('任意位置', t.nums, 'blue'); return rows; }
+    if (t.kind === '2d' || t.kind === 'guess2d_diff') { add(t.posName || '选定号码', t.nums, 'purple'); return rows; }
+    if (t.kind === 'guess2d_same' || t.kind === 'triple') { add(t.kind === 'triple' ? '三位同号' : '两同号', t.nums, 'purple'); return rows; }
+    if (t.kind === 'sum') { add('和值', t.nums, 'purple'); return rows; }
+    if (g.kind === 'digit') { add('号码', t.nums, g.key === 'qxc' ? 'blue' : 'blue'); return rows; }
+    if (g.key === 'dlt' || g.key === 'ssq') {
+      let off = 0;
+      g.groups.forEach((grp) => { add(grp.name, t.nums.slice(off, off + grp.pick), grp.cls); off += grp.pick; });
+      return rows;
+    }
+    add(g.key === 'kl8' ? '选号' : '号码', t.nums, 'gold');
+    return rows;
+  }
+  function exportColor(color) {
+    const map = {
+      red: ['#ff8298', '#d92f52'], blue: ['#72d3ff', '#247bd8'], gold: ['#ffe28a', '#d99b16'],
+      purple: ['#c7a5ff', '#754ce0'], dan: ['#ffe28a', '#d99b16'], tuo: ['#8fd7ff', '#327cc8'],
+      redDim: ['#e79aaa', '#a63650'], blueDim: ['#91bad8', '#2c5f8e'], goldDim: ['#d9c17f', '#96751f'],
+    };
+    return map[color] || map.gold;
+  }
+  function exportRowHeight(row, width) {
+    if (row.text) return 46;
+    const cap = Math.max(1, Math.floor((width + 12) / 58));
+    return Math.ceil(row.nums.length / cap) * 58 + 6;
+  }
+  function exportTicketHeight(g, t, width) {
+    const rows = exportRows(g, t);
+    return 68 + rows.reduce((sum, row) => sum + exportRowHeight(row, width), 0) + 42;
+  }
+  function drawExportTextPill(ctx, row, x, y, width) {
+    const text = row.text;
+    ctx.font = '700 20px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+    const tw = ctx.measureText(text).width;
+    const w = Math.min(width, tw + 34), h = 38;
+    ctx.fillStyle = 'rgba(255,207,92,.13)'; roundRect(ctx, x, y, w, h, 12); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,207,92,.42)'; ctx.stroke();
+    ctx.fillStyle = '#ffe8a3'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + w / 2, y + h / 2 + 1);
+  }
+  function drawExportRow(ctx, g, row, x, y, width) {
+    if (row.text) { drawExportTextPill(ctx, row, x, y + 3, width); return exportRowHeight(row, width); }
+    const D = 46, G = 12, R = D / 2, cap = Math.max(1, Math.floor((width + G) / (D + G)));
+    ctx.textBaseline = 'middle';
+    row.nums.forEach((v, i) => {
+      const col = i % cap, line = Math.floor(i / cap);
+      const cx = x + col * (D + G) + R, cy = y + line * (D + 12) + R;
+      const colors = exportColor(row.color);
+      ctx.save();
+      ctx.shadowColor = colors[1] + '99'; ctx.shadowBlur = 9;
+      const grad = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+      grad.addColorStop(0, colors[0]); grad.addColorStop(1, colors[1]);
+      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(255,255,255,.72)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = row.color === 'red' || row.color === 'blue' || row.color === 'purple' || row.color === 'dan' || row.color === 'tuo' || row.color === 'redDim' || row.color === 'blueDim' ? '#ffffff' : '#10203d';
+      ctx.font = '700 18px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(g.kind === 'digit' ? String(v) : pad2(v), cx, cy + 1);
+    });
+    return exportRowHeight(row, width);
+  }
   function exportPickImage() {
     const g = G[S.game];
     if (!S.lastTickets) { const ok = doGenerate(); if (!ok) return; }
-    const ts = S.lastTickets; const info = S.lastPickInfo;
-    const W = 1080, M = 64;
-    const stName = (STRATS.find((x) => x[0] === S.pick.strategy) || [])[1];
+    const ts = S.lastTickets, info = S.lastPickInfo;
+    const W = 1080, M = 64, SCALE = 2, cardW = W - M * 2, innerW = cardW - 134;
+    const stName = (STRATS.find((x) => x[0] === S.pick.strategy) || [])[1] || S.pick.strategy;
     const modeName = info ? modeLabel(g, info.mode, info.w) : '';
-    const n = ts.length;
-    // 估算高度：页眉 + 信息条 + 每注卡 + 底部
-    const headH = 300, metaH = 120, footH = 230;
-    const perCard = g.key === 'kl8' ? 168 : 148;
-    const H = headH + metaH + n * perCard + footH;
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const ctx = cv.getContext('2d');
+    const headH = 292, metaH = 112, footH = 220, gap = 18;
+    const cardHeights = ts.map((t) => exportTicketHeight(g, t, innerW));
+    const H = headH + metaH + cardHeights.reduce((a, b) => a + b + gap, 0) + footH;
+    const cv = document.createElement('canvas'); cv.width = W * SCALE; cv.height = H * SCALE;
+    const ctx = cv.getContext('2d'); ctx.scale(SCALE, SCALE);
     const cn = (px, bold) => `${bold ? '700 ' : '400 '}${px}px -apple-system,"PingFang SC","Microsoft YaHei",sans-serif`;
-    // 背景
+    const accent = g.cat === 'fc' ? '#ffd15c' : '#35e0ff';
     const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#0a1024'); bg.addColorStop(.5, '#0e1735'); bg.addColorStop(1, '#081020');
+    bg.addColorStop(0, '#070d1d'); bg.addColorStop(.5, '#0d1734'); bg.addColorStop(1, '#071020');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    // 网格线
-    ctx.strokeStyle = 'rgba(53,224,255,.06)';
-    for (let x = 0; x < W; x += 54) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-    for (let y = 0; y < H; y += 54) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-    // 对角光带
-    const lg = ctx.createLinearGradient(0, 0, W, 300);
-    lg.addColorStop(0, 'rgba(53,224,255,.16)'); lg.addColorStop(1, 'rgba(124,77,255,.10)');
-    ctx.fillStyle = lg; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.lineTo(W - 260, headH); ctx.lineTo(0, headH - 60); ctx.closePath(); ctx.fill();
-    // —— 页眉 ——
+    const glow = ctx.createRadialGradient(W - 140, 100, 10, W - 140, 100, 520);
+    glow.addColorStop(0, g.cat === 'fc' ? 'rgba(255,183,64,.23)' : 'rgba(53,224,255,.22)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = glow; ctx.fillRect(0, 0, W, 520);
+    ctx.strokeStyle = 'rgba(135,170,255,.055)'; ctx.lineWidth = 1;
+    for (let x = 0; x <= W; x += 72) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y <= H; y += 72) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.fillStyle = accent; ctx.fillRect(0, 0, W, 4);
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#35e0ff'; ctx.font = cn(15, false);
-    ctx.fillText('体彩 · 福彩 多游戏智能参考中心', M, 46);
-    ctx.fillStyle = 'rgba(53,224,255,.5)'; ctx.font = cn(12, false);
-    ctx.textAlign = 'right'; ctx.fillText('DATA · SMART REFERENCE', W - M, 46);
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#fff'; ctx.font = cn(44, true);
-    ctx.fillText(`${g.icon} ${g.name} · 智能参考出号`, M, 118);
-    ctx.fillStyle = '#9fb6ea'; ctx.font = cn(17, false);
-    ctx.fillText(`归属：${CATS[g.cat].name} ｜ ${g.schedule} ｜ 数据源：${g.source}`, M, 164);
-    // 信息条（黄金分隔槽）
-    const infoY = headH - 76;
-    ctx.fillStyle = 'rgba(255,255,255,.04)';
-    roundRect(ctx, M, infoY, W - M * 2, 64, 14); ctx.fill();
-    ctx.strokeStyle = 'rgba(53,224,255,.25)'; ctx.stroke();
-    const segW = (W - M * 2) / 5;
-    const infoRows = [
-      ['出号策略', stName], ['统计窗口', `近 ${info.win} 期`], ['玩法', modeName],
-      ['生成注数', `${n} 注`], ['生成时间', nowStr()],
-    ];
-    ctx.textAlign = 'center';
-    infoRows.forEach((it, i) => {
+    ctx.fillStyle = accent; ctx.font = cn(16, true); ctx.fillText('体彩 · 福彩 多游戏智能参考中心', M, 48);
+    ctx.fillStyle = 'rgba(205,224,255,.58)'; ctx.font = cn(12, false); ctx.textAlign = 'right'; ctx.fillText('SMART NUMBER STUDIO', W - M, 48);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#ffffff'; ctx.font = cn(46, true); ctx.fillText(`${g.icon} ${g.name} · 智能参考出号`, M, 120);
+    ctx.fillStyle = '#a9bde8'; ctx.font = cn(17, false); ctx.fillText(`归属：${CATS[g.cat].name} ｜ ${g.schedule} ｜ 数据源：${g.source}`, M, 168);
+    const infoY = headH - 72, segW = cardW / 5;
+    ctx.fillStyle = 'rgba(21,35,75,.92)'; roundRect(ctx, M, infoY, cardW, 64, 14); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,125,220,.42)'; ctx.stroke();
+    [['出号策略', stName], ['统计窗口', `近 ${info.win} 期`], ['玩法', modeName], ['生成方案', `${ts.length} 注`], ['生成时间', nowStr()]].forEach((it, i) => {
       const cx = M + segW * i + segW / 2;
-      ctx.fillStyle = '#6f86c4'; ctx.font = cn(13, false);
-      ctx.fillText(it[0], cx, infoY + 24);
-      ctx.fillStyle = '#eaf3ff'; ctx.font = cn(17, true);
-      ctx.fillText(it[1], cx, infoY + 47);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#7188bd'; ctx.font = cn(13, false); ctx.fillText(it[0], cx, infoY + 23);
+      ctx.fillStyle = '#f5f8ff'; ctx.font = cn(17, true); ctx.fillText(it[1], cx, infoY + 46);
     });
-    // —— 每注卡片 ——
-    let y = headH + metaH - 30;
+    let y = headH + metaH - 24;
     ts.forEach((t, i) => {
-      const cardH = g.key === 'kl8' ? 168 : 148;
-      const cy = y;
-      // 卡背景
-      ctx.fillStyle = 'rgba(23,35,74,.75)';
-      roundRect(ctx, M, cy, W - M * 2, cardH - 16, 18); ctx.fill();
-      ctx.strokeStyle = 'rgba(90,120,220,.35)'; ctx.stroke();
-      // 序号
-      ctx.fillStyle = 'rgba(255,207,92,.15)';
-      ctx.beginPath(); ctx.arc(M + 42, cy + (cardH - 16) / 2, 28, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffcf5c'; ctx.font = cn(22, true); ctx.textAlign = 'center';
-      ctx.fillText(String(i + 1), M + 42, cy + (cardH - 16) / 2 + 1);
-      ctx.textAlign = 'left';
-      const modeTxt = ticketModeText(g, t);
-      ctx.fillStyle = 'rgba(53,224,255,.9)'; ctx.font = cn(14, false);
-      ctx.fillText(modeTxt, M + 84, cy + 26);
-      ctx.fillStyle = '#9fb6ea'; ctx.font = cn(12, false);
-      const costTxt = t.combos > 1 ? `${t.combos} 注组合 · 投注 ${t.cost} 元` : '单式 1 注 · 2 元';
-      ctx.textAlign = 'right'; ctx.fillText(costTxt, W - M, cy + 26); ctx.textAlign = 'left';
-      // 球
-      drawTicketBalls(ctx, g, t, M + 84, cy + 78, W, M);
-      y += cardH;
+      const rows = exportRows(g, t), cardH = cardHeights[i];
+      ctx.fillStyle = 'rgba(17,29,63,.96)'; roundRect(ctx, M, y, cardW, cardH, 20); ctx.fill();
+      ctx.strokeStyle = g.cat === 'fc' ? 'rgba(255,209,92,.42)' : 'rgba(53,224,255,.38)'; ctx.lineWidth = 1.3; ctx.stroke();
+      ctx.fillStyle = accent; roundRect(ctx, M, y + 16, 5, cardH - 32, 4); ctx.fill();
+      ctx.fillStyle = 'rgba(53,224,255,.14)'; ctx.beginPath(); ctx.arc(M + 45, y + 38, 24, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.font = cn(19, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(i + 1), M + 45, y + 39);
+      ctx.textAlign = 'left'; ctx.fillStyle = accent; ctx.font = cn(16, true); ctx.fillText(ticketModeText(g, t), M + 82, y + 30);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#a9bde8'; ctx.font = cn(13, false);
+      ctx.fillText(`${t.combos} 注组合 ｜ ${t.cost} 元`, W - M - 20, y + 30);
+      let rowY = y + 60;
+      rows.forEach((row) => {
+        ctx.textAlign = 'right'; ctx.fillStyle = '#8fa5d5'; ctx.font = cn(13, true); ctx.fillText(row.label, M + 116, rowY + 22);
+        drawExportRow(ctx, g, row, M + 134, rowY, innerW);
+        rowY += exportRowHeight(row, innerW);
+      });
+      ctx.textAlign = 'left'; ctx.fillStyle = '#6f86b9'; ctx.font = cn(12, false);
+      ctx.fillText(t.times > 1 || t.periods > 1 || t.append ? `倍投 ${t.times || 1} ｜ 连续 ${t.periods || 1} 期${t.append ? ' ｜ 含追加' : ''}` : '官方玩法组合已按注数自动换算', M + 82, y + cardH - 18);
+      y += cardH + gap;
     });
-    // —— 底部 ——
-    ctx.fillStyle = 'rgba(53,224,255,.55)'; ctx.font = cn(13, false); ctx.textAlign = 'center';
-    ctx.fillText('✦ 高分参考与回测请于系统内查看 · 长图已含全部生成注数 ✦', W / 2, y + 46);
-    ctx.fillStyle = '#8fa3cf'; ctx.font = cn(15, false);
-    ctx.fillText('以上号码仅为历史统计参考，不构成中奖预测；每期开奖相互独立，请理性购彩。', W / 2, y + 82);
-    ctx.fillStyle = '#6f86c4'; ctx.font = cn(13, false);
-    ctx.fillText('彩票有风险，投注需理性 · 未成年人不得购买彩票 · 数据来源：体彩 sporttery.cn / 福彩 cwl.gov.cn', W / 2, y + 112);
+    ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(53,224,255,.72)'; ctx.font = cn(13, false);
+    ctx.fillText('✦ 智能出号仅基于历史统计，不改变每期独立随机概率 ✦', W / 2, y + 46);
+    ctx.fillStyle = '#93a8d4'; ctx.font = cn(15, false);
+    ctx.fillText('以上号码仅为历史统计参考，不构成中奖预测；请理性购彩。', W / 2, y + 82);
+    ctx.fillStyle = '#687dab'; ctx.font = cn(13, false);
+    ctx.fillText('彩票有风险，投注需理性 · 未成年人不得购买彩票 · 体彩 sporttery.cn / 福彩 cwl.gov.cn', W / 2, y + 114);
     const link = document.createElement('a');
-    link.download = `${g.name}_智能参考_${dateStamp()}_${n}注.png`;
+    link.download = `${g.name}_智能参考_${dateStamp()}_${ts.length}注.png`;
     link.href = cv.toDataURL('image/png');
     link.click();
-    toast(`已导出结果图片（1080 宽 PNG，含全部 ${n} 注）`, 'ok');
+    toast(`已导出高清结果图片（${W * SCALE} 宽 PNG）`, 'ok');
   }
   function nowStr() {
     const d = new Date();
@@ -886,78 +978,6 @@
   function modeLabel(g, mode, w) {
     const base = ML.playLabel(g.key, mode || 'direct');
     return g.key === 'kl8' ? `选${['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][w || 10]} · ${base}` : base;
-  }
-  function ballColors(g, t) {
-    // 返回每个球的 (类名) — 复用前端规则
-    if (t.kind === 'dantuo') {
-      return { dan: 'gold', tuo: 'goldDim' };
-    }
-    const cls = [];
-    if (g.kind === 'digit') { for (let i = 0; i < g.digits; i++) cls.push(g.key === 'qxc' && i === 6 ? '#a879ff' : '#4da6ff'); return cls; }
-    if (g.key === 'dlt') { for (let i = 0; i < 7; i++) cls.push(i < 5 ? '#ff5f77' : '#4da6ff'); return cls; }
-    if (g.key === 'ssq') { for (let i = 0; i < 7; i++) cls.push(i < 6 ? '#ff5f77' : '#4da6ff'); return cls; }
-    return null;
-  }
-  function drawTicketBalls(ctx, g, t, x0, y0, W, M) {
-    const R = 24, gap = 12;
-    const colors = ballColors(g, t);
-    const slots = [];
-    const addSlot = (v, color, dim) => slots.push({ v, color, dim });
-    if (t.option) {
-      ctx.fillStyle = '#ffcf5c'; ctx.font = `700 26px sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillText(t.label || t.option, x0, y0 + R);
-      return;
-    }
-    if (t.selections) {
-      const flat = [];
-      t.selections.forEach((row) => {
-        if (row.kind === 'dantuo') flat.push(...row.dan, null, ...row.tuo);
-        else flat.push(...row.nums);
-        flat.push(null);
-      });
-      if (flat[flat.length - 1] === null) flat.pop();
-      flat.forEach((v, i) => addSlot(v, colors && colors[Math.min(i, colors.length - 1)] || '#ffcf5c', false));
-    } else if (t.kind === 'dantuo') {
-      t.dan.forEach((v) => addSlot(v, '#ffcf5c', false));
-      addSlot(null, '#6f86c4', false); // 分隔
-      t.tuo.forEach((v) => addSlot(v, '#ffcf5c', true));
-    } else if (t.kind === 'compound') {
-      t.nums.forEach((v) => addSlot(v, '#ffcf5c', false));
-    } else if (g.kind === 'digit') {
-      t.nums.forEach((v, i) => addSlot(v, colors && colors[i] || '#4da6ff', false));
-    } else if (g.key === 'kl8') {
-      t.nums.forEach((v) => addSlot(v, '#ffcf5c', false));
-    } else {
-      t.nums.forEach((v, i) => addSlot(v, colors[i], false));
-      // 主/次组之间加分隔
-      const mid = g.groups[0].pick;
-      slots.splice(mid, 0, { v: null, color: '#6f86c4', dim: false });
-    }
-    const maxRow = Math.floor((W - M * 2 - (x0 - M)) / (R * 2 + gap));
-    let row = 0, col = 0;
-    slots.forEach((s) => {
-      const x = x0 + col * (R * 2 + gap);
-      if (s.v === null) { ctx.fillStyle = '#5f76b0'; ctx.font = '700 22px sans-serif'; ctx.fillText('＋', x, y0 + 1); col++; if (col >= maxRow) { col = 0; row++; } return; }
-      if (x + R * 2 > W - M) { col = 0; row++; }
-      const cx = x0 + col * (R * 2 + gap), cy = y0 + row * (R * 2 + 10);
-      ctx.globalAlpha = s.dim ? .55 : 1;
-      const grad = ctx.createRadialGradient(cx + R * .7, cy + R * .7, 2, cx + R, cy + R, R * 1.2);
-      grad.addColorStop(0, lighten(s.color)); grad.addColorStop(1, s.color);
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(cx + R, cy + R, R, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = '#0b1020'; ctx.font = `700 ${g.kind === 'digit' ? 20 : 18}px sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(g.kind === 'digit' ? String(s.v) : pad2(s.v), cx + R, cy + R + 1);
-      ctx.globalAlpha = 1;
-      col++;
-      if (col >= maxRow) { col = 0; row++; }
-    });
-    ctx.textAlign = 'left';
-  }
-  function lighten(hex) {
-    // 简化：浅色高光
-    return 'rgba(255,255,255,.45)';
   }
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
