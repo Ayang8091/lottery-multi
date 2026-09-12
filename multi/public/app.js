@@ -591,20 +591,34 @@
     const b = nums.slice(mid).map((v) => `<span class="ball sm blue">${pad2(v)}</span>`).join('');
     return a + '<span class="sep-x">+</span>' + b;
   }
+  function digitPoolRefs(feats, n) {
+    const score = new Array(10).fill(0);
+    for (const row of feats) for (const f of row) score[f.d] += f.fFreq * 2 + f.fRec + f.fTrend * 0.5;
+    return score.map((s, d) => ({ d, s })).sort((a, b) => b.s - a.s).slice(0, n).map((x) => x.d).sort((a, b) => a - b);
+  }
   function poolRecHtml(g, feats, pick) {
     // 数字彩：各位高分参考前5；区间彩：各组高分参考前10
     let html = '<div class="note" style="margin-bottom:6px">✦ 高分参考（按当前策略评分排序）</div>';
     if (g.kind === 'digit') {
       const rank = (a, b) => (b.fFreq * 2 + b.fRec + b.fTrend * 0.5) - (a.fFreq * 2 + a.fRec + a.fTrend * 0.5);
       const rows = feats.map((row, p) => {
-        const top = row.slice().sort(rank).slice(0, 5).map((x) => x.d).join(' ');
+        const top = row.slice().sort(rank).slice(0, 5).map((x) => x.d).sort((a, b) => a - b).join(' ');
         return `<span class="pool-num"><b>${g.positions[p]}</b> ${top}</span>`;
       }).join('');
-      html += `<div class="pick-pool" style="margin-bottom:0">${rows}</div>`;
+      if (g.key === 'pl3' || g.key === 'f3d') {
+        const extras = [
+          ['5码复式', digitPoolRefs(feats, 5).join(' ')],
+          ['6码复式', digitPoolRefs(feats, 6).join(' ')],
+          ['2码全包', digitPoolRefs(feats, 2).join(' ')],
+        ].map(([label, nums]) => `<span class="pool-num"><b>${label}</b> ${nums}</span>`).join('');
+        html += `<div class="pick-pool" style="margin-bottom:0">${rows}${extras}</div>`;
+      } else {
+        html += `<div class="pick-pool" style="margin-bottom:0">${rows}</div>`;
+      }
     } else {
       const rank = (a, b) => (b.fFreq * 2 + b.fRec + b.fTrend * 0.5) - (a.fFreq * 2 + a.fRec + a.fTrend * 0.5);
       const limits = g.key === 'dlt' ? [10, 5] : g.key === 'ssq' ? [11, 5] : g.key === 'kl8' ? [20] : g.groups.map(() => 10);
-      const groups = feats.map((row, i) => row.slice().sort(rank).slice(0, limits[i] || 10).map((x) => pad2(x.n)).join(' '));
+      const groups = feats.map((row, i) => row.slice().sort(rank).slice(0, limits[i] || 10).map((x) => x.n).sort((a, b) => a - b).map((n) => pad2(n)).join(' '));
       html += `<div class="pick-pool" style="margin-bottom:0">${g.groups.map((grp, i) => `<span class="pool-num"><b>${grp.name}</b> ${groups[i]}</span>`).join('')}</div>`;
     }
     return html;
@@ -867,16 +881,22 @@
     if (!Array.isArray(feats) || !feats.length) return [];
     const rank = (a, b) => (b.fFreq * 2 + b.fRec + b.fTrend * 0.5) - (a.fFreq * 2 + a.fRec + a.fTrend * 0.5);
     if (g.kind === 'digit') {
-      return feats.map((row, p) => ({
+      const rows = feats.map((row, p) => ({
         label: g.positions[p] || `第${p + 1}位`,
-        nums: row.slice().sort(rank).slice(0, 5).map((x) => x.d),
+        nums: row.slice().sort(rank).slice(0, 5).map((x) => x.d).sort((a, b) => a - b),
         color: p === 6 && g.key === 'qxc' ? 'purple' : 'blue',
       }));
+      if (g.key === 'pl3' || g.key === 'f3d') {
+        rows.push({ label: '5码复式', nums: digitPoolRefs(feats, 5), color: 'blue' });
+        rows.push({ label: '6码复式', nums: digitPoolRefs(feats, 6), color: 'blue' });
+        rows.push({ label: '2码全包', nums: digitPoolRefs(feats, 2), color: 'blue' });
+      }
+      return rows;
     }
     const limits = g.key === 'dlt' ? [10, 5] : g.key === 'ssq' ? [11, 5] : g.key === 'kl8' ? [20] : g.groups.map(() => 10);
     return feats.map((row, i) => ({
       label: g.key === 'kl8' ? '开奖号码' : g.groups[i].name,
-      nums: row.slice().sort(rank).slice(0, limits[i] || 10).map((x) => x.n),
+      nums: row.slice().sort(rank).slice(0, limits[i] || 10).map((x) => x.n).sort((a, b) => a - b),
       color: g.groups[i] ? g.groups[i].cls : 'gold',
     }));
   }
