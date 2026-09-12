@@ -121,12 +121,10 @@ test('官方投注方式均可生成合法方案', () => {
   const data = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'all.json'), 'utf8'));
   const cases = [
     ['dlt', 'single', {}], ['dlt', 'front_compound', { mainSize: 7 }], ['dlt', 'back_compound', { subSize: 3 }],
-    ['dlt', 'full_compound', { mainSize: 7, subSize: 3 }], ['dlt', 'front_dantuo', { mainSize: 7, mainDan: 2 }],
-    ['dlt', 'back_dantuo', { subSize: 3 }], ['dlt', 'full_dantuo', { mainSize: 7, mainDan: 1, subSize: 3 }],
+    ['dlt', 'full_compound', { mainSize: 7, subSize: 3 }], ['dlt', 'front_dantuo', { mainDan: 2, mainTuo: 4 }],
     ['qxc', 'front_compound', { digitsPerPos: 2 }], ['qxc', 'last_compound', { digitsPerPos: 2 }], ['qxc', 'full_compound', { digitsPerPos: 2 }],
     ['ssq', 'red_compound', { mainSize: 7 }], ['ssq', 'blue_compound', { subSize: 2 }],
-    ['ssq', 'full_compound', { mainSize: 7, subSize: 2 }], ['ssq', 'red_dantuo', { mainSize: 7, mainDan: 1 }],
-    ['ssq', 'full_dantuo', { mainSize: 7, mainDan: 1, subSize: 2 }],
+    ['ssq', 'full_compound', { mainSize: 7, subSize: 2 }], ['ssq', 'red_dantuo', { mainDan: 1, mainTuo: 6 }],
     ['kl8', 'single', { w: 5 }], ['kl8', 'compound', { w: 5, extra: 2 }], ['kl8', 'dantuo', { w: 5, extra: 2, danCount: 2 }],
     ...ML.PLAY_OPTIONS.pl3.map((x) => ['pl3', x.key, { digitsPerPos: 2, poolSize: 4, tuoCount: 3, danCount: 1, tuoCount: 4, spanCount: 1, sumCount: 1 }]),
     ...ML.PLAY_OPTIONS.pl5.map((x) => ['pl5', x.key, { digitsPerPos: 2 }]),
@@ -158,15 +156,17 @@ test('排列3 / 福彩3D复式与胆拖注数符合官方组合规则', () => {
   assert.equal(run('f3d', 'group6_compound', { poolSize: 4 }).combos, 4);
   assert.equal(run('pl5', 'direct_compound', { digitsPerPos: 2 }).combos, 32);
   assert.equal(run('dlt', 'front_dantuo', { mainDan: 4, mainTuo: 2 }).combos, 2);
-  assert.equal(run('dlt', 'full_dantuo', { mainDan: 4, mainTuo: 2, subTuo: 2 }).combos, 4);
   assert.equal(run('ssq', 'red_dantuo', { mainDan: 5, mainTuo: 2 }).combos, 2);
-  assert.equal(run('ssq', 'full_dantuo', { mainDan: 5, mainTuo: 2, subSize: 2 }).combos, 4);
   assert.equal(run('kl8', 'dantuo', { w: 10, danCount: 9, tuoCount: 2 }).combos, 2);
   assert.equal(run('pl3', 'group6_dantuo', { danCount: 2, tuoCount: 2 }).combos, 2);
   assert.equal(run('f3d', 'direct_combo_dantuo', { danCount: 2, tuoCount: 2 }).combos, 24);
   assert.equal(run('kl8', 'dantuo', { w: 5, danCount: 1, tuoCount: 79 }).combos, ML.comb(79, 4));
   assert.equal(run('kl8', 'dantuo', { w: 5, danCount: 4, tuoCount: 76 }).combos, 76);
   assert.equal(run('dlt', 'front_dantuo', { mainDan: 1, mainTuo: 34 }).combos, ML.comb(34, 4));
+  assert.equal(run('dlt', 'front_compound', { mainSize: 35 }).combos, ML.comb(35, 5));
+  assert.equal(run('dlt', 'back_compound', { subSize: 12 }).combos, ML.comb(12, 2));
+  assert.equal(run('ssq', 'red_compound', { mainSize: 33 }).combos, ML.comb(33, 6));
+  assert.equal(run('ssq', 'blue_compound', { subSize: 16 }).combos, 16);
   assert.equal(run('ssq', 'red_dantuo', { mainDan: 1, mainTuo: 32 }).combos, ML.comb(32, 5));
   assert.equal(run('pl3', 'group3_dantuo', { tuoCount: 9 }).combos, 18);
   assert.equal(run('f3d', 'group6_dantuo', { danCount: 2, tuoCount: 8 }).combos, 8);

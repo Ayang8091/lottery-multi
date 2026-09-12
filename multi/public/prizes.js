@@ -50,13 +50,13 @@
       key: 'dlt', cat: 'tc', name: '超级大乐透', short: '大乐透', icon: '💥',
       kind: 'set', groups: [{ name: '前区', max: 35, pick: 5, cls: 'red' }, { name: '后区', max: 12, pick: 2, cls: 'blue' }],
       schedule: '每周一、三、六开奖（约 21:10，休市除外）', source: '中国体育彩票',
-      intro: '前区 01-35 选 5 + 后区 01-12 选 2；支持前/后/双区复式、胆拖、追加与多倍投注。',
+      intro: '前区 01-35 选 5 + 后区 01-12 选 2；支持前区/后区/双区复式、前区胆拖、追加与多倍投注。',
     },
     ssq: {
       key: 'ssq', cat: 'fc', name: '双色球', short: '双色球', icon: '🔴',
       kind: 'set', groups: [{ name: '红球', max: 33, pick: 6, cls: 'red' }, { name: '蓝球', max: 16, pick: 1, cls: 'blue' }],
       schedule: '每周二、四、日开奖（约 21:15，休市除外）', source: '中国福利彩票',
-      intro: '红球 01-33 选 6 + 蓝球 01-16 选 1；支持红/蓝/全复式与单式/复式胆拖。',
+      intro: '红球 01-33 选 6 + 蓝球 01-16 选 1；支持红球/蓝球/全复式与红球胆拖。',
     },
     kl8: {
       key: 'kl8', cat: 'fc', name: '快乐8', short: '快乐8', icon: '🎱',
@@ -77,8 +77,6 @@
       { key: 'back_compound', label: '后区复式' },
       { key: 'full_compound', label: '双区复式' },
       { key: 'front_dantuo', label: '前区胆拖' },
-      { key: 'back_dantuo', label: '后区胆拖' },
-      { key: 'full_dantuo', label: '双区胆拖' },
     ],
     qxc: [
       { key: 'direct', label: '单式' },
@@ -112,8 +110,7 @@
       { key: 'red_compound', label: '红球复式' },
       { key: 'blue_compound', label: '蓝球复式' },
       { key: 'full_compound', label: '全复式' },
-      { key: 'red_dantuo', label: '单式胆拖' },
-      { key: 'full_dantuo', label: '复式胆拖' },
+      { key: 'red_dantuo', label: '红球胆拖' },
     ],
     kl8: [
       { key: 'single', label: '单式' },

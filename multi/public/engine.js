@@ -537,13 +537,10 @@
         const subSize = Math.max(g.groups[1].pick, Number(opts.subSize) || 3);
         const mainDan = Math.max(1, Math.min(g.groups[0].pick - 1, Number(opts.mainDan) || 1));
         const mainTuo = Math.max(g.groups[0].pick - mainDan + 1, Number(opts.mainTuo) || (g.groups[0].pick - mainDan + 1));
-        const subTuo = Math.max(2, Number(opts.subTuo) || 2);
         if (mode === 'front_compound') { sizes = [mainSize, 2]; dans = [0, 0]; }
         else if (mode === 'back_compound') { sizes = [5, subSize]; dans = [0, 0]; }
         else if (mode === 'full_compound') { sizes = [mainSize, subSize]; dans = [0, 0]; }
         else if (mode === 'front_dantuo') { sizes = [mainDan + mainTuo, 2]; dans = [mainDan, 0]; }
-        else if (mode === 'back_dantuo') { sizes = [5, 1 + subTuo]; dans = [0, 1]; }
-        else if (mode === 'full_dantuo') { sizes = [mainDan + mainTuo, 1 + subTuo]; dans = [mainDan, 1]; }
         else { sizes = [5, 2]; dans = [0, 0]; }
       } else {
         const mainSize = Math.max(g.groups[0].pick, Number(opts.mainSize) || 7);
@@ -554,7 +551,6 @@
         else if (mode === 'blue_compound') { sizes = [6, subSize]; dans = [0, 0]; }
         else if (mode === 'full_compound') { sizes = [mainSize, subSize]; dans = [0, 0]; }
         else if (mode === 'red_dantuo') { sizes = [mainDan + mainTuo, 1]; dans = [mainDan, 0]; }
-        else if (mode === 'full_dantuo') { sizes = [mainDan + mainTuo, Math.max(2, subSize)]; dans = [mainDan, 0]; }
         else { sizes = [6, 1]; dans = [0, 0]; }
       }
       const ticket = makeSetTicket(scored, groups, sizes, dans, mode, { rnd, picks: isKl8 ? [Math.max(1, Math.min(10, Number(opts.w) || 10))] : undefined, w: isKl8 ? (Math.max(1, Math.min(10, Number(opts.w) || 10))) : undefined });

@@ -365,6 +365,12 @@
     const current = paramValue(key, options[0] && options[0][0]);
     return `<div class="param-row pick-param" data-param-key="${key}"><label>${label}</label><div class="seg wrap param-seg">${segHtml(options, current, 'pv')}</div></div>`;
   }
+  function sizeControl(key, label, min, max) {
+    const current = safeCount(key, min, max, min);
+    let options = '';
+    for (let i = min; i <= max; i++) options += `<option value="${i}"${i === current ? ' selected' : ''}>${i}码</option>`;
+    return `<div class="param-row pick-param" data-param-key="${key}"><label>${label}</label><select class="param-select">${options}</select></div>`;
+  }
   function dragControl(key, label, min, max) {
     const current = safeCount(key, min, max, min);
     let options = '';
@@ -397,23 +403,19 @@
     const allowedTimes = [1, 2, 5, 10, maxTimes];
     if (!allowedTimes.includes(Number(paramValue('times', 1)))) S.pick.params.times = 1;
     if (g.key === 'dlt') {
-      if (mode === 'front_compound' || mode === 'full_compound') controls.push(paramControl('mainSize', '前区选号个数', numberOptions(6, 10, '码')));
-      if (mode === 'back_compound' || mode === 'full_compound') controls.push(paramControl('subSize', '后区选号个数', numberOptions(3, 6, '码')));
-      if (mode === 'front_dantuo' || mode === 'full_dantuo') {
+      if (mode === 'front_compound' || mode === 'full_compound') controls.push(sizeControl('mainSize', '前区选号个数（共35个号码）', 6, 35));
+      if (mode === 'back_compound' || mode === 'full_compound') controls.push(sizeControl('subSize', '后区选号个数（共12个号码）', 3, 12));
+      if (mode === 'front_dantuo') {
         const dan = safeCount('mainDan', 1, 4, 1);
         const minTuo = Math.max(2, 6 - dan), maxTuo = 35 - dan;
         safeCount('mainTuo', minTuo, maxTuo, minTuo);
         controls.push(paramControl('mainDan', '前区胆码个数', numberOptions(1, 4, '胆')));
         controls.push(dragControl('mainTuo', '前区拖码个数', minTuo, maxTuo));
       }
-      if (mode === 'back_dantuo' || mode === 'full_dantuo') {
-        safeCount('subTuo', 2, 11, 2);
-        controls.push(dragControl('subTuo', '后区拖码个数（胆码固定1个）', 2, 11));
-      }
     } else if (g.key === 'ssq') {
-      if (mode === 'red_compound' || mode === 'full_compound') controls.push(paramControl('mainSize', '红球选号个数', numberOptions(7, 10, '码')));
-      if (mode === 'blue_compound' || mode === 'full_compound' || mode === 'full_dantuo') controls.push(paramControl('subSize', '蓝球选号个数', numberOptions(2, 6, '码')));
-      if (mode === 'red_dantuo' || mode === 'full_dantuo') {
+      if (mode === 'red_compound' || mode === 'full_compound') controls.push(sizeControl('mainSize', '红球选号个数（共33个号码）', 7, 33));
+      if (mode === 'blue_compound' || mode === 'full_compound') controls.push(sizeControl('subSize', '蓝球选号个数（共16个号码）', 2, 16));
+      if (mode === 'red_dantuo') {
         const dan = safeCount('mainDan', 1, 5, 1);
         const minTuo = Math.max(2, 7 - dan), maxTuo = 33 - dan;
         safeCount('mainTuo', minTuo, maxTuo, minTuo);
