@@ -74,7 +74,7 @@
   // ---------- 元数据 / 顶部 ----------
   async function fetchStaticData() {
     if (S.staticData) return S.staticData;
-    const r = await fetch(new URL('data/all.json', document.baseURI));
+    const r = await fetch(new URL('data/all.json', document.baseURI), { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     S.staticData = await r.json();
     return S.staticData;
@@ -1068,13 +1068,20 @@
     } catch (e) { $('lanBody').innerHTML = '<div class="note">获取地址失败：' + esc(e.message) + '</div>'; }
   }
   async function doRefresh() {
-    if (S.static) { toast('GitHub Pages 为只读版本，请在本机运行 npm run refresh 后重新发布', 'err'); return; }
     const btn = $('btnRefresh'); const old = btn.textContent;
     btn.disabled = true; btn.textContent = '⟳ 更新中…';
     try {
-      const r = await fetch('/api/refresh?game=' + S.game); const j = await r.json();
-      if (j.ok) { S.cache[S.game] = null; await loadDraws(S.game); await loadMeta(); renderAll(); toast(j.message, 'ok'); }
-      else toast('刷新失败：' + j.message, 'err');
+      if (S.static) {
+        S.staticData = null;
+        S.cache = {};
+        await loadMeta();
+        await selectGame(S.game);
+        toast('已同步仓库最新开奖数据', 'ok');
+      } else {
+        const r = await fetch('/api/refresh?game=all'); const j = await r.json();
+        if (j.ok) { S.cache = {}; await loadMeta(); await selectGame(S.game); toast(j.message, 'ok'); }
+        else toast('刷新失败：' + j.message, 'err');
+      }
     } catch (e) { toast('刷新失败：' + e.message, 'err'); }
     btn.disabled = false; btn.textContent = old;
   }

@@ -4,13 +4,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { fetchGame, GAME_META } from './lib/fetchDraws.js';
+import { fetchGame, fetchLatest, GAME_META } from './lib/fetchDraws.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8790);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC = path.join(__dirname, 'public');
 const DATA_FILE = path.join(__dirname, 'data', 'all.json');
+const PUBLIC_DATA_FILE = path.join(__dirname, 'public', 'data', 'all.json');
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8',
@@ -28,8 +29,19 @@ function loadData() {
 }
 function saveData() {
   fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+  fs.mkdirSync(path.dirname(PUBLIC_DATA_FILE), { recursive: true });
   fs.writeFileSync(DATA_FILE, JSON.stringify(data));
+  fs.writeFileSync(PUBLIC_DATA_FILE, JSON.stringify(data));
   updatedAt = new Date();
+}
+function mergeDraws(oldList = [], latestList = []) {
+  const map = new Map();
+  for (const d of oldList) if (d && d.code) map.set(String(d.code), d);
+  for (const d of latestList) if (d && d.code) map.set(String(d.code), d);
+  return [...map.values()].sort((a, b) => {
+    const ac = String(a.code), bc = String(b.code);
+    return ac < bc ? -1 : ac > bc ? 1 : 0;
+  });
 }
 function lanAddresses() {
   const out = [];
@@ -57,7 +69,8 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const p = url.pathname;
   const q = url.searchParams;
-  const game = gameOf(q.get('game'));
+  const rawGame = q.get('game');
+  const game = rawGame === 'all' ? 'all' : gameOf(rawGame);
 
   if (p === '/api/meta') {
     const info = {};
@@ -72,9 +85,16 @@ const server = http.createServer(async (req, res) => {
   }
   if (p === '/api/refresh') {
     try {
-      data[game] = await fetchGame(game);
+      const targets = game === 'all' ? Object.keys(GAME_META) : [game];
+      let added = 0;
+      for (const key of targets) {
+        const before = (data[key] || []).length;
+        data[key] = mergeDraws(data[key], await fetchLatest(key, 100));
+        added += data[key].length - before;
+      }
       saveData();
-      sendJson(res, 200, { ok: true, game, total: data[game].length, updatedAt, message: `${GAME_META[game].label} 已更新到最新（共 ${data[game].length} 期）` });
+      const total = targets.reduce((n, key) => n + (data[key] || []).length, 0);
+      sendJson(res, 200, { ok: true, game, total, added, updatedAt, message: targets.length > 1 ? `已一键同步 ${targets.length} 个游戏，新增 ${added} 期` : `${GAME_META[game].label} 已更新到最新（共 ${data[game].length} 期）` });
     } catch (e) { sendJson(res, 502, { ok: false, message: `刷新失败：${e.message}` }); }
     return;
   }
