@@ -1,4 +1,6 @@
 // 多游戏智能参考中心 —— 官方历史抓取（零第三方依赖）
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 // 体彩：大乐透(85)、七星彩(04)、排列3(35)、排列5(350133)  → webapi.sporttery.cn
 // 福彩：双色球(ssq)、快乐8(kl8)、福彩3D(3d)              → www.cwl.gov.cn
 const SPORT_API = 'https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry';
@@ -18,15 +20,21 @@ const CWL_HEADERS = {
   'Referer': 'https://www.cwl.gov.cn/',
 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const execFileAsync = promisify(execFile);
 async function requestJson(url, headers, label) {
   let last;
+  const curlArgs = ['-sS', '-L', '--fail-with-body', '--max-time', '30', '-A', headers['User-Agent']];
+  for (const [key, value] of Object.entries(headers)) {
+    if (key !== 'User-Agent') curlArgs.push('-H', `${key}: ${value}`);
+  }
+  curlArgs.push(url);
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const res = await fetch(url, { headers });
-      if (res.ok) return await res.json();
-      last = new Error(`${label} HTTP ${res.status}`);
+      const { stdout } = await execFileAsync('curl', curlArgs, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+      return JSON.parse(stdout);
     } catch (e) {
-      last = new Error(`${label} 请求失败：${e.message}`);
+      const detail = String(e.stderr || e.stdout || e.message || '').replace(/\s+/g, ' ').slice(0, 180);
+      last = new Error(`${label} 请求失败：${detail}`);
     }
     if (attempt < 3) await sleep(1200 * (attempt + 1));
   }
