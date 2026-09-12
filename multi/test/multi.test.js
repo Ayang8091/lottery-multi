@@ -170,6 +170,15 @@ test('排列3 / 福彩3D复式与胆拖注数符合官方组合规则', () => {
   assert.equal(run('ssq', 'red_dantuo', { mainDan: 1, mainTuo: 32 }).combos, ML.comb(32, 5));
   assert.equal(run('pl3', 'group3_dantuo', { tuoCount: 9 }).combos, 18);
   assert.equal(run('f3d', 'group6_dantuo', { danCount: 2, tuoCount: 8 }).combos, 8);
+  assert.equal(run('qxc', 'front_compound', { frontDigits: 10 }).combos, Math.pow(10, 6));
+  assert.equal(run('qxc', 'last_compound', { lastDigits: 15 }).combos, 15);
+  assert.equal(run('qxc', 'full_compound', { frontDigits: 10, lastDigits: 15 }).combos, 15 * Math.pow(10, 6));
+  assert.equal(run('pl3', 'direct_compound', { digitsPerPos: 10 }).combos, 1000);
+  assert.equal(run('pl3', 'direct_combo_compound', { poolSize: 10 }).combos, 720);
+  assert.equal(run('pl3', 'group3_compound', { poolSize: 10 }).combos, 90);
+  assert.equal(run('pl3', 'group6_compound', { poolSize: 10 }).combos, 120);
+  assert.equal(run('pl5', 'direct_compound', { digitsPerPos: 10 }).combos, 100000);
+  assert.equal(run('kl8', 'compound', { w: 5, totalSize: 80 }).combos, ML.comb(80, 5));
 });
 
 test('统一引擎：7 游戏可出号 + 回测均值接近理论', () => {

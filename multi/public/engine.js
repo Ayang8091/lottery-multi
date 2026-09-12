@@ -265,20 +265,20 @@
     };
     while (tickets.length < count && guard++ < Math.max(50, count * 40)) {
       if (mode === 'direct_compound') {
-        const per = Math.max(2, Math.min(3, Number(opts.digitsPerPos) || 2));
+        const per = Math.max(2, Math.min(10, Number(opts.digitsPerPos) || 2));
         const selections = scored.map((row) => sampleSorted(row, per, rnd));
         const combos = selections.reduce((n, row) => n * row.length, 1);
         push({ kind: mode, selections, nums: selections.flat(), combos });
       } else if (mode === 'direct_combo_compound') {
-        const size = Math.max(3, Math.min(6, Number(opts.poolSize) || 4));
+        const size = Math.max(3, Math.min(10, Number(opts.poolSize) || 4));
         const nums = sampleSorted(agg, size, rnd);
         push({ kind: mode, nums, combos: permutation(nums.length, 3) });
       } else if (mode === 'group3_compound') {
-        const size = Math.max(2, Math.min(6, Number(opts.poolSize) || 4));
+        const size = Math.max(2, Math.min(10, Number(opts.poolSize) || 4));
         const nums = sampleSorted(agg, size, rnd);
         push({ kind: mode, nums, combos: nums.length * (nums.length - 1) });
       } else if (mode === 'group6_compound') {
-        const size = Math.max(4, Math.min(8, Number(opts.poolSize) || 4));
+        const size = Math.max(4, Math.min(10, Number(opts.poolSize) || 4));
         const nums = sampleSorted(agg, size, rnd);
         push({ kind: mode, nums, combos: ML.comb(nums.length, 3) });
       } else if (mode === 'group3_dantuo') {
@@ -352,13 +352,14 @@
   E.generateQxcComplex = function (opts, scored, rnd) {
     const { g, strategy = 'mix', win = 100, count = 3 } = opts;
     const mode = opts.mode || 'direct';
-    const per = Math.max(2, Math.min(3, Number(opts.digitsPerPos) || 2));
+    const frontDigits = Math.max(2, Math.min(10, Number(opts.frontDigits || opts.digitsPerPos) || 2));
+    const lastDigits = Math.max(2, Math.min(15, Number(opts.lastDigits || opts.digitsPerPos) || 2));
     const tickets = [], seen = new Set();
     let guard = 0;
     while (tickets.length < count && guard++ < Math.max(40, count * 30)) {
       const selections = scored.map((row, p) => {
         const multi = mode === 'full_compound' || (mode === 'front_compound' && p < 6) || (mode === 'last_compound' && p === 6);
-        return sampleSorted(row, multi ? per : 1, rnd);
+        return sampleSorted(row, multi ? (p === 6 ? lastDigits : frontDigits) : 1, rnd);
       });
       const combos = selections.reduce((n, row) => n * row.length, 1);
       const key = selections.map((row) => row.join(',')).join('/');
@@ -521,7 +522,8 @@
         const w = Math.max(1, Math.min(10, Number(opts.w) || 10));
         const extra = Math.max(0, Math.min(3, Number(opts.extra) || 2));
         if (mode === 'compound') {
-          sizes = [Math.min(80, Math.max(w + 1, w + extra))];
+          const totalSize = Math.max(w + 1, Math.min(80, Number(opts.totalSize) || (w + extra)));
+          sizes = [totalSize];
           dans = [0];
         } else if (mode === 'dantuo' && w > 1) {
           const danCount = Math.max(1, Math.min(w - 1, Number(opts.danCount) || 1));

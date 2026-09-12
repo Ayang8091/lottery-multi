@@ -423,12 +423,13 @@
         controls.push(dragControl('mainTuo', '红球拖码个数', minTuo, maxTuo));
       }
     } else if (g.key === 'qxc' && mode !== 'direct') {
-      controls.push(paramControl('digitsPerPos', '每个复式位选号', [[2, '2个'], [3, '3个']]));
+      if (mode === 'front_compound' || mode === 'full_compound') controls.push(sizeControl('frontDigits', '前六位每位置选号个数（每位0-9）', 2, 10));
+      if (mode === 'last_compound' || mode === 'full_compound') controls.push(sizeControl('lastDigits', '末位选号个数（0-14）', 2, 15));
     } else if (g.key === 'pl3' || g.key === 'pl5' || g.key === 'f3d') {
-      if (mode === 'direct_compound') controls.push(paramControl('digitsPerPos', '每位置选号个数', [[2, '2个'], [3, '3个']]));
-      if (mode === 'direct_combo_compound') controls.push(paramControl('poolSize', '组合选号个数', numberOptions(3, 6, '码')));
-      if (mode === 'group3_compound') controls.push(paramControl('poolSize', '组选3选号个数', numberOptions(2, 6, '码')));
-      if (mode === 'group6_compound') controls.push(paramControl('poolSize', '组选6选号个数', numberOptions(4, 8, '码')));
+      if (mode === 'direct_compound') controls.push(sizeControl('digitsPerPos', '每位置选号个数（每位0-9）', 2, 10));
+      if (mode === 'direct_combo_compound') controls.push(sizeControl('poolSize', '组合选号个数（0-9）', 3, 10));
+      if (mode === 'group3_compound') controls.push(sizeControl('poolSize', '组选3选号个数（0-9）', 2, 10));
+      if (mode === 'group6_compound') controls.push(sizeControl('poolSize', '组选6选号个数（0-9）', 4, 10));
       if (mode === 'group3_dantuo') {
         safeCount('tuoCount', 2, 9, 2);
         controls.push(dragControl('tuoCount', '拖码个数（胆码固定1个）', 2, 9));
@@ -443,7 +444,7 @@
       if (mode.endsWith('_span')) controls.push(paramControl('spanCount', '选择跨度个数', numberOptions(1, 3, '个')));
       if (mode.endsWith('_sum')) controls.push(paramControl('sumCount', '选择和值个数', numberOptions(1, 4, '个')));
     } else if (g.key === 'kl8') {
-      if (mode === 'compound') controls.push(paramControl('extra', '超出单式的加选码', numberOptions(1, 3, '码')));
+      if (mode === 'compound') controls.push(sizeControl('totalSize', '复式选号个数（共80个号码）', S.pick.w + 1, 80));
       if (mode === 'dantuo' && S.pick.w > 1) {
         const dan = safeCount('danCount', 1, S.pick.w - 1, 1);
         const minTuo = S.pick.w - dan + 1, maxTuo = 80 - dan;
