@@ -1,0 +1,41 @@
+name: Update Data
+
+on:
+  schedule:
+    - cron: '5,35 * * * *' # 每半点/整点后 5 分钟增量同步官方开奖（福彩接口不支持浏览器跨域，由本任务保证最新）
+  workflow_dispatch: # 支持在 Actions 页面手动触发
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch latest draws from official APIs
+        working-directory: multi
+        run: node scripts/fetch.js
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add multi/data/all.json multi/public/data/all.json
+          if git diff --cached --quiet; then
+            echo "数据无变化，跳过提交"
+          else
+            git commit -m "chore: 定时同步官方最新开奖数据"
+            git push
+          fi

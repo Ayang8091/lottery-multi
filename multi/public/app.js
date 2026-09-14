@@ -132,6 +132,36 @@
     finally { syncing = false; }
   }
 
+  // ---------- 体彩官方接口实时同步（官方接口支持 CORS，可浏览器直连） ----------
+  // 福彩接口不支持 CORS，其最新数据由仓库定时任务（每小时）保证，点更新时一并拉取
+  const SPORT_LIVE = { dlt: '85', qxc: '04', pl3: '35', pl5: '350133' };
+  const SPORT_LIVE_NUMS = { dlt: 7, qxc: 7, pl3: 3, pl5: 5 };
+  function sportPickLive(o) {
+    const nums = String(o.lotteryDrawResult || '').split(/[\s,]+/).filter(Boolean).map((s) => parseInt(s, 10));
+    if (!nums.length || !o.lotteryDrawNum) return null;
+    return {
+      code: String(o.lotteryDrawNum),
+      date: String(o.lotteryDrawTime || '').replace(/\(.*\)$/, '').trim(),
+      nums,
+      sales: 0,
+      prize: String(o.prizeLevelList?.[0]?.stakeAmountFormat || '').replace(/,/g, ''),
+    };
+  }
+  async function fetchSportLive(gameKey) {
+    const url = `https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry?gameNo=${SPORT_LIVE[gameKey]}&provinceId=0&pageSize=30&isVerify=1&pageNo=1`;
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (!j.success) throw new Error(j.errorMessage || '接口错误');
+    const expect = SPORT_LIVE_NUMS[gameKey];
+    return (j.value?.list || []).map(sportPickLive).filter((d) => d && d.code && d.date && d.nums.length === expect);
+  }
+  function mergeDrawList(oldList, newList) {
+    const map = new Map((oldList || []).map((d) => [String(d.code), d]));
+    (newList || []).forEach((d) => map.set(String(d.code), d));
+    return [...map.values()].sort((a, b) => (String(a.code) < String(b.code) ? -1 : 1));
+  }
+
   async function fetchStaticData(opts) {
     const force = !!(opts && opts.force);
     if (!force && S.staticData) return S.staticData;
@@ -1168,14 +1198,40 @@
     btn.disabled = true; btn.textContent = '⟳ 更新中…';
     try {
       if (S.static) {
-        // 手动更新：强制绕过 CDN/浏览器缓存拉取最新数据
-        S.staticData = null;
+        // 双通道更新：
+        //  A) 强拉仓库最新 all.json（带时间戳击穿 CDN 缓存）→ 覆盖全部游戏，福彩3游戏由此更新
+        //  B) 浏览器直连体彩官方接口 → 大乐透/7星彩/排列3/排列5 实时更新
+        const base = (await readDataCache()) || S.staticData || {};
+        const work = JSON.parse(JSON.stringify(base));
+        const added = {};
+        let repoOk = false;
+        try {
+          const repoData = await fetchStaticData({ force: true });
+          ML.order.forEach((k) => { if (Array.isArray(repoData[k])) work[k] = repoData[k]; });
+          repoOk = true;
+        } catch (e) { /* 仓库拉取失败时继续用官方接口数据 */ }
+        const liveKeys = Object.keys(SPORT_LIVE);
+        const liveResults = await Promise.allSettled(liveKeys.map(async (k) => {
+          const fresh = await fetchSportLive(k);
+          const before = Array.isArray(work[k]) ? work[k] : [];
+          work[k] = mergeDrawList(before, fresh);
+          added[k] = work[k].length - before.length;
+        }));
+        const liveOk = liveResults.filter((r) => r.status === 'fulfilled').length;
+        S.staticData = work;
         S.cache = {};
-        const data = await fetchStaticData({ force: true });
         S.loadedFromCache = false;
-        applyStaticData(data);
+        saveDataCache(work);
+        applyStaticData(work);
         await selectGame(S.game);
-        toast('已同步仓库最新开奖数据', 'ok');
+        const newGames = ML.order.filter((k) => added[k] > 0);
+        const newTotal = newGames.reduce((a, k) => a + added[k], 0);
+        if (newTotal > 0) {
+          toast(`已更新 ${newTotal} 期最新开奖：` + newGames.map((k) => `${G[k].short || G[k].name}+${added[k]}`).join('、'), 'ok');
+        } else {
+          toast(repoOk ? '各游戏均已同步至最新一期开奖' : '已是最新（仓库数据拉取失败，稍后再试）', 'ok');
+        }
+        if (liveOk === 0 && !repoOk) toast('官方接口暂时无法访问，请稍后重试', 'err');
       } else {
         const r = await fetch('/api/refresh?game=all'); const j = await r.json();
         if (j.ok) { S.cache = {}; await loadMeta(); await selectGame(S.game); toast(j.message, 'ok'); }
