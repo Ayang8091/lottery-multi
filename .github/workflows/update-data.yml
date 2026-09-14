@@ -24,9 +24,20 @@ jobs:
         with:
           node-version: 20
 
+      # 国内彩票官网会拦截海外机房 IP：接口不通时脚本会保留原数据并照常结束，
+      # 加上 continue-on-error 双保险，任务永不判失败（避免失败通知邮件）
       - name: Fetch latest draws from official APIs
+        id: fetch
+        continue-on-error: true
         working-directory: multi
         run: node scripts/fetch.js
+
+      - name: Report fetch status
+        if: always()
+        run: |
+          if [ "${{ steps.fetch.outcome }}" != "success" ]; then
+            echo "::warning::本次未取到数据（海外机房 IP 常被拦截），数据保持不变，属预期情况。"
+          fi
 
       - name: Commit and push if changed
         run: |
