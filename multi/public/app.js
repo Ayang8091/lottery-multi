@@ -72,12 +72,82 @@
   }
 
   // ---------- 元数据 / 顶部 ----------
-  async function fetchStaticData() {
-    if (S.staticData) return S.staticData;
-    const r = await fetch(new URL('data/all.json', document.baseURI), { cache: 'no-store' });
+  // 本地持久缓存（Cache API）：避免每次打开都重新下载 5MB 数据
+  const DATA_CACHE = 'lottery-multi-data-v1';
+  const DATA_CACHE_KEY = 'lottery-multi/data/all.json';
+  const LS_TAG = 'lottery-multi/dataTag';
+  const LS_SYNC = 'lottery-multi/lastSync';
+  const SYNC_GAP = 10 * 60 * 1000; // 后台检查更新最短间隔 10 分钟
+  let syncing = false;
+
+  function dataUrl(bust) {
+    const u = new URL('data/all.json', document.baseURI);
+    // 加时间戳参数击穿 GitHub Pages CDN 的 max-age=600 缓存，确保拿到最新数据
+    if (bust) u.searchParams.set('t', Date.now());
+    return u.href;
+  }
+  async function readDataCache() {
+    try {
+      if (!('caches' in window)) return null;
+      const cache = await caches.open(DATA_CACHE);
+      const resp = await cache.match(DATA_CACHE_KEY);
+      return resp ? await resp.json() : null;
+    } catch (e) { return null; }
+  }
+  async function saveDataCache(data) {
+    try {
+      if (!('caches' in window)) return;
+      const cache = await caches.open(DATA_CACHE);
+      await cache.put(DATA_CACHE_KEY, new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } }));
+    } catch (e) { /* 存储失败不影响使用 */ }
+  }
+  function rememberTag(tag) {
+    if (!tag) return;
+    try { localStorage.setItem(LS_TAG, tag); } catch (e) { /* ignore */ }
+  }
+  async function headTag() {
+    const r = await fetch(dataUrl(true), { method: 'HEAD', cache: 'no-store' });
+    return r.headers.get('etag') || r.headers.get('last-modified') || '';
+  }
+  // 后台轻量校验：HEAD 只查标识，数据有变化才真正下载，无感知更新
+  async function backgroundSync() {
+    if (syncing) return;
+    let last = 0;
+    try { last = Number(localStorage.getItem(LS_SYNC) || 0); } catch (e) {}
+    if (Date.now() - last < SYNC_GAP) return;
+    syncing = true;
+    try {
+      try { localStorage.setItem(LS_SYNC, String(Date.now())); } catch (e) {}
+      const tag = await headTag();
+      let prev = '';
+      try { prev = localStorage.getItem(LS_TAG) || ''; } catch (e) {}
+      if (tag && prev && tag === prev) return; // 数据没有更新
+      const data = await fetchStaticData({ force: true });
+      if (!S.loadedFromCache) return; // 本次本来就是网络加载的，无需重绘
+      S.cache = {};
+      applyStaticData(data);
+      await selectGame(S.game);
+      toast('已自动同步最新开奖数据', 'ok');
+    } catch (e) { /* 静默失败，下次再查 */ }
+    finally { syncing = false; }
+  }
+
+  async function fetchStaticData(opts) {
+    const force = !!(opts && opts.force);
+    if (!force && S.staticData) return S.staticData;
+    const r = await fetch(dataUrl(force), { cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    S.staticData = await r.json();
-    return S.staticData;
+    const data = await r.json();
+    S.staticData = data;
+    rememberTag(r.headers.get('etag') || r.headers.get('last-modified') || '');
+    saveDataCache(data);
+    return data;
+  }
+  function applyStaticData(j) {
+    S.info = Object.fromEntries(ML.order.map((k) => [k, { total: Array.isArray(j[k]) ? j[k].length : 0 }]));
+    S.updatedAt = null; S.static = true;
+    const parts = ML.order.map((k) => `${G[k].name}${S.info[k].total}`).join(' · ');
+    $('dataInfo').textContent = '已内置官方历史 ' + parts;
   }
   async function loadMeta() {
     try {
@@ -88,12 +158,18 @@
       const parts = ML.order.map((k) => `${G[k].name}${j.info[k].total}`).join(' · ');
       $('dataInfo').textContent = '已内置官方历史 ' + parts;
     } catch (apiError) {
+      // 优先用本地缓存秒开，再后台检查更新
+      const cached = await readDataCache();
+      if (cached) {
+        S.loadedFromCache = true;
+        S.staticData = cached;
+        applyStaticData(cached);
+        backgroundSync();
+        return;
+      }
       try {
         const j = await fetchStaticData();
-        S.info = Object.fromEntries(ML.order.map((k) => [k, { total: Array.isArray(j[k]) ? j[k].length : 0 }]));
-        S.updatedAt = null; S.static = true;
-        const parts = ML.order.map((k) => `${G[k].name}${S.info[k].total}`).join(' · ');
-        $('dataInfo').textContent = '已内置官方历史 ' + parts;
+        applyStaticData(j);
       } catch (staticError) {
         $('dataInfo').textContent = '数据加载失败，请检查数据文件';
       }
@@ -1092,9 +1168,12 @@
     btn.disabled = true; btn.textContent = '⟳ 更新中…';
     try {
       if (S.static) {
+        // 手动更新：强制绕过 CDN/浏览器缓存拉取最新数据
         S.staticData = null;
         S.cache = {};
-        await loadMeta();
+        const data = await fetchStaticData({ force: true });
+        S.loadedFromCache = false;
+        applyStaticData(data);
         await selectGame(S.game);
         toast('已同步仓库最新开奖数据', 'ok');
       } else {
@@ -1102,7 +1181,14 @@
         if (j.ok) { S.cache = {}; await loadMeta(); await selectGame(S.game); toast(j.message, 'ok'); }
         else toast('刷新失败：' + j.message, 'err');
       }
-    } catch (e) { toast('刷新失败：' + e.message, 'err'); }
+    } catch (e) {
+      toast('刷新失败：' + e.message, 'err');
+      // 拉取失败时回滚到本地缓存数据，保证页面可用
+      try {
+        const cached = await readDataCache();
+        if (cached && S.static) { S.staticData = cached; applyStaticData(cached); await selectGame(S.game); }
+      } catch (e2) { /* ignore */ }
+    }
     btn.disabled = false; btn.textContent = old;
   }
 
